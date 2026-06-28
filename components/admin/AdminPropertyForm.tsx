@@ -4,7 +4,8 @@ import {
     X, Upload, Trash2, Loader2,
     Bed, Bath, Building2, Ruler,
     Navigation, Car, Users,
-    MapPin, Home, AlertCircle
+    MapPin, Home, AlertCircle,
+    TrendingUp, Compass, FileCheck
 } from 'lucide-react';
 import {
     TARGET_DISTRICTS,
@@ -12,7 +13,9 @@ import {
     ALLEY_TYPES,
     FENG_SHUI_ISSUES,
     NEIGHBOR_TYPES,
-    ALLEY_END_TYPES
+    ALLEY_END_TYPES,
+    DIRECTIONS,
+    SALE_STATUSES
 } from '@/configs/constants';
 
 interface AdminPropertyFormProps {
@@ -20,7 +23,7 @@ interface AdminPropertyFormProps {
     onSubmit: (data: Property) => void;
     onCancel: () => void;
     isLoading?: boolean;
-    uploadImageToDiscord?: (file: File) => Promise<{ success: boolean; url: string }>;
+    uploadMultipleImages?: (files: File[], onProgress?: (current: number, total: number) => void) => Promise<string[]>;
 }
 
 export function AdminPropertyForm({
@@ -28,7 +31,7 @@ export function AdminPropertyForm({
     onSubmit,
     onCancel,
     isLoading = false,
-    uploadImageToDiscord
+    uploadMultipleImages
 }: AdminPropertyFormProps) {
     const isEditing = !!initialData?.id;
 
@@ -62,16 +65,28 @@ export function AdminPropertyForm({
         isHardToAccess: false,
         neighborType: 'khac',
         alleyEndType: 'khong_xac_dinh',
+        saleStatus: 'dang_ban',
+        floorNumber: 0,
+        direction: 'khong_xac_dinh',
+        isInExistingResidentialArea: false,
+        sensitiveImages: [],
+        hasBuildingPermit: false,
+        notes: '',
     });
 
     const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+    const [uploadedSensitiveImages, setUploadedSensitiveImages] = useState<string[]>([]);
+    const [pendingNormalFiles, setPendingNormalFiles] = useState<File[]>([]);
+    const [pendingSensitiveFiles, setPendingSensitiveFiles] = useState<File[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, type: '' });
 
     // Load initial data
     useEffect(() => {
         if (initialData) {
             setFormData(initialData);
             setUploadedImages(initialData.images || []);
+            setUploadedSensitiveImages(initialData.sensitiveImages || []);
         }
     }, [initialData]);
 
@@ -79,50 +94,96 @@ export function AdminPropertyForm({
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Chọn ảnh nhưng chưa upload
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'normal' | 'sensitive') => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
-        if (!uploadImageToDiscord) {
-            // Fallback: tạo URL tạm thời
-            const urls = files.map(file => URL.createObjectURL(file));
-            setUploadedImages(prev => [...prev, ...urls]);
-            handleChange('images', [...uploadedImages, ...urls]);
-            return;
+        if (type === 'normal') {
+            setPendingNormalFiles(prev => [...prev, ...files]);
+        } else {
+            setPendingSensitiveFiles(prev => [...prev, ...files]);
         }
+        e.target.value = '';
+    };
 
-        setIsUploading(true);
-        try {
-            const uploadPromises = files.map(file => uploadImageToDiscord(file));
-            const results = await Promise.all(uploadPromises);
-            const urls = results.map(r => r.url);
-            const newImages = [...uploadedImages, ...urls];
+    // Xóa ảnh đã chọn nhưng chưa upload
+    const removePendingImage = (index: number, type: 'normal' | 'sensitive') => {
+        if (type === 'normal') {
+            setPendingNormalFiles(prev => prev.filter((_, i) => i !== index));
+        } else {
+            setPendingSensitiveFiles(prev => prev.filter((_, i) => i !== index));
+        }
+    };
+
+    // Xóa ảnh đã upload
+    const removeUploadedImage = (index: number, type: 'normal' | 'sensitive') => {
+        if (type === 'normal') {
+            const newImages = uploadedImages.filter((_, i) => i !== index);
             setUploadedImages(newImages);
             handleChange('images', newImages);
-        } catch (error) {
-            console.error('Upload error:', error);
-            alert('Lỗi upload ảnh. Vui lòng thử lại.');
-        } finally {
-            setIsUploading(false);
-            e.target.value = '';
+        } else {
+            const newSensitiveImages = uploadedSensitiveImages.filter((_, i) => i !== index);
+            setUploadedSensitiveImages(newSensitiveImages);
+            handleChange('sensitiveImages', newSensitiveImages);
         }
     };
 
-    const removeImage = (index: number) => {
-        const newImages = uploadedImages.filter((_, i) => i !== index);
-        setUploadedImages(newImages);
-        handleChange('images', newImages);
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validate required fields
         if (!formData.title || !formData.price || !formData.area || !formData.address) {
             alert('Vui lòng điền đầy đủ các trường bắt buộc: Tiêu đề, Giá, Diện tích, Địa chỉ');
             return;
         }
 
+        // Gom tất cả URL ảnh
+        let finalNormalImages = [...uploadedImages];
+        let finalSensitiveImages = [...uploadedSensitiveImages];
+
+        // Upload ảnh thường nếu có
+        if (pendingNormalFiles.length > 0 && uploadMultipleImages) {
+            setIsUploading(true);
+            setUploadProgress({ current: 0, total: pendingNormalFiles.length, type: 'normal' });
+            
+            try {
+                const urls = await uploadMultipleImages(pendingNormalFiles, (current, total) => {
+                    setUploadProgress({ current, total, type: 'normal' });
+                });
+                finalNormalImages = [...finalNormalImages, ...urls];
+                setUploadedImages(finalNormalImages);
+                setPendingNormalFiles([]);
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Lỗi upload ảnh thường. Vui lòng thử lại.');
+                setIsUploading(false);
+                return;
+            }
+        }
+
+        // Upload ảnh nhạy cảm nếu có
+        if (pendingSensitiveFiles.length > 0 && uploadMultipleImages) {
+            setIsUploading(true);
+            setUploadProgress({ current: 0, total: pendingSensitiveFiles.length, type: 'sensitive' });
+            
+            try {
+                const urls = await uploadMultipleImages(pendingSensitiveFiles, (current, total) => {
+                    setUploadProgress({ current, total, type: 'sensitive' });
+                });
+                finalSensitiveImages = [...finalSensitiveImages, ...urls];
+                setUploadedSensitiveImages(finalSensitiveImages);
+                setPendingSensitiveFiles([]);
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Lỗi upload ảnh nhạy cảm. Vui lòng thử lại.');
+                setIsUploading(false);
+                return;
+            }
+        }
+
+        setIsUploading(false);
+
+        // Gom tất cả dữ liệu vào 1 object Property
         const propertyData: Property = {
             id: initialData?.id || `prop-${Date.now()}`,
             title: formData.title || '',
@@ -134,7 +195,7 @@ export function AdminPropertyForm({
             type: 'sale',
             bedrooms: Number(formData.bedrooms) || 2,
             bathrooms: Number(formData.bathrooms) || 2,
-            images: uploadedImages.length > 0 ? uploadedImages : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'],
+            images: finalNormalImages.length > 0 ? finalNormalImages : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'],
             contactName: formData.contactName || 'Chính chủ',
             contactPhone: formData.contactPhone || '',
             hasPlanningIssue: formData.hasPlanningIssue || false,
@@ -154,9 +215,34 @@ export function AdminPropertyForm({
             isHardToAccess: formData.isHardToAccess || false,
             neighborType: formData.neighborType || 'khac',
             alleyEndType: formData.alleyEndType || 'khong_xac_dinh',
+            saleStatus: formData.saleStatus || 'dang_ban',
+            floorNumber: Number(formData.floorNumber) || 0,
+            direction: formData.direction || 'khong_xac_dinh',
+            isInExistingResidentialArea: formData.isInExistingResidentialArea || false,
+            sensitiveImages: finalSensitiveImages,
+            hasBuildingPermit: formData.hasBuildingPermit || false,
+            notes: formData.notes || '',
         };
 
+        // Gửi 1 lần duy nhất lên Google Sheets
         onSubmit(propertyData);
+    };
+
+    // Render preview cho file pending
+    const renderPendingPreview = (files: File[], type: 'normal' | 'sensitive') => {
+        return files.map((file, idx) => (
+            <div key={idx} className="relative w-20 h-20 border dark:border-neutral-800 overflow-hidden group">
+                <img src={URL.createObjectURL(file)} alt={`Pending ${idx + 1}`} className="w-full h-full object-cover" />
+                <button
+                    type="button"
+                    onClick={() => removePendingImage(idx, type)}
+                    className="absolute top-1 right-1 bg-rose-600 text-white p-1 hover:bg-rose-700 transition-colors"
+                >
+                    <Trash2 className="w-3 h-3" />
+                </button>
+                <span className="absolute bottom-1 left-1 bg-yellow-500/80 text-white text-[8px] px-1">Chờ upload</span>
+            </div>
+        ));
     };
 
     return (
@@ -176,6 +262,8 @@ export function AdminPropertyForm({
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* ... Tất cả các phần form giữ nguyên ... */}
+                    
                     {/* Thông tin cơ bản */}
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase border-b border-neutral-200 dark:border-neutral-900 pb-2">
@@ -293,6 +381,58 @@ export function AdminPropertyForm({
                                         <option key={t.value} value={t.value}>{t.label}</option>
                                     ))}
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Thông tin bán & Hướng */}
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase border-b border-neutral-200 dark:border-neutral-900 pb-2">
+                            🏷️ Thông tin bán & Hướng
+                        </h4>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
+                                    <TrendingUp className="w-3 h-3 inline mr-1" /> Trạng thái
+                                </label>
+                                <select
+                                    value={formData.saleStatus || 'dang_ban'}
+                                    onChange={(e) => handleChange('saleStatus', e.target.value)}
+                                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-3 text-xs focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white"
+                                >
+                                    {SALE_STATUSES.map((t) => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
+                                    <Compass className="w-3 h-3 inline mr-1" /> Hướng nhà
+                                </label>
+                                <select
+                                    value={formData.direction || 'khong_xac_dinh'}
+                                    onChange={(e) => handleChange('direction', e.target.value)}
+                                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-3 text-xs focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white"
+                                >
+                                    {DIRECTIONS.map((t) => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
+                                    <Building2 className="w-3 h-3 inline mr-1" /> Tầng số (chung cư)
+                                </label>
+                                <input
+                                    type="number"
+                                    placeholder="0"
+                                    value={formData.floorNumber || ''}
+                                    onChange={(e) => handleChange('floorNumber', Number(e.target.value))}
+                                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-3 text-xs focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white"
+                                />
                             </div>
                         </div>
                     </div>
@@ -435,7 +575,7 @@ export function AdminPropertyForm({
                             ⚖️ Pháp lý
                         </h4>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                             <div className="space-y-1 flex items-center">
                                 <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
                                     <input
@@ -464,6 +604,18 @@ export function AdminPropertyForm({
                                 <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
                                     <input
                                         type="checkbox"
+                                        checked={formData.hasBuildingPermit || false}
+                                        onChange={(e) => handleChange('hasBuildingPermit', e.target.checked)}
+                                        className="w-4 h-4"
+                                    />
+                                    Giấy phép xây dựng
+                                </label>
+                            </div>
+
+                            <div className="space-y-1 flex items-center">
+                                <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
                                         checked={formData.hasConstructionApproval || false}
                                         onChange={(e) => handleChange('hasConstructionApproval', e.target.checked)}
                                         className="w-4 h-4"
@@ -485,6 +637,18 @@ export function AdminPropertyForm({
                             </div>
 
                             <div className="space-y-1 flex items-center">
+                                <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.isInExistingResidentialArea || false}
+                                        onChange={(e) => handleChange('isInExistingResidentialArea', e.target.checked)}
+                                        className="w-4 h-4"
+                                    />
+                                    Khu dân cư hiện hữu
+                                </label>
+                            </div>
+
+                            <div className="space-y-1 flex items-center sm:col-span-2">
                                 <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
                                     <input
                                         type="checkbox"
@@ -553,6 +717,26 @@ export function AdminPropertyForm({
                         </div>
                     </div>
 
+                    {/* Ghi chú */}
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase border-b border-neutral-200 dark:border-neutral-900 pb-2">
+                            📝 Ghi chú
+                        </h4>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
+                                Ghi chú thêm
+                            </label>
+                            <textarea
+                                rows={2}
+                                placeholder="Thông tin thêm về bất động sản..."
+                                value={formData.notes || ''}
+                                onChange={(e) => handleChange('notes', e.target.value)}
+                                className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-3 text-xs focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white resize-y"
+                            />
+                        </div>
+                    </div>
+
                     {/* Liên hệ */}
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase border-b border-neutral-200 dark:border-neutral-900 pb-2">
@@ -594,48 +778,124 @@ export function AdminPropertyForm({
                             🖼️ Hình ảnh
                         </h4>
 
+                        {/* Ảnh thường */}
                         <div>
-                            <div className="flex items-center gap-3 flex-wrap">
-                                <label className={`cursor-pointer border border-dashed border-neutral-400 dark:border-neutral-800 hover:border-neutral-950 dark:hover:border-white w-20 h-20 flex flex-col items-center justify-center gap-1.5 transition-all bg-neutral-50 dark:bg-neutral-900/50 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
+                                Ảnh bất động sản
+                            </label>
+                            <div className="flex items-center gap-3 flex-wrap mt-2">
+                                <label className="cursor-pointer border border-dashed border-neutral-400 dark:border-neutral-800 hover:border-neutral-950 dark:hover:border-white w-20 h-20 flex flex-col items-center justify-center gap-1.5 transition-all bg-neutral-50 dark:bg-neutral-900/50">
                                     <Upload className="w-4 h-4 text-neutral-500" />
                                     <span className="text-[9px] font-bold tracking-wider text-neutral-500 uppercase text-center leading-tight">
-                                        {isUploading ? 'Đang tải...' : 'Tải ảnh'}
+                                        Chọn ảnh
                                     </span>
                                     <input
                                         type="file"
                                         multiple
                                         accept="image/*"
-                                        onChange={handleImageUpload}
+                                        onChange={(e) => handleImageSelect(e, 'normal')}
                                         className="hidden"
                                         disabled={isUploading}
                                     />
                                 </label>
 
-                                {isUploading && (
-                                    <div className="w-20 h-20 border border-neutral-200 dark:border-neutral-800 flex flex-col items-center justify-center gap-1.5 text-[9px] tracking-wider uppercase">
-                                        <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />
-                                        <span>ĐANG GỬI</span>
-                                    </div>
-                                )}
-
+                                {/* Ảnh đã upload */}
                                 {uploadedImages.map((url, idx) => (
-                                    <div key={idx} className="relative w-20 h-20 border dark:border-neutral-800 overflow-hidden group">
+                                    <div key={`uploaded-${idx}`} className="relative w-20 h-20 border dark:border-neutral-800 overflow-hidden group">
                                         <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
                                         <button
                                             type="button"
-                                            onClick={() => removeImage(idx)}
+                                            onClick={() => removeUploadedImage(idx, 'normal')}
                                             className="absolute top-1 right-1 bg-neutral-950/80 text-white p-1 hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100"
                                         >
                                             <Trash2 className="w-3 h-3" />
                                         </button>
                                     </div>
                                 ))}
+
+                                {/* Ảnh chờ upload */}
+                                {renderPendingPreview(pendingNormalFiles, 'normal')}
                             </div>
 
-                            <p className="text-[9px] text-neutral-400 mt-2 tracking-wider">
-                                💡 Hỗ trợ tải nhiều ảnh cùng lúc. Ảnh sẽ được upload lên Discord CDN.
+                            {pendingNormalFiles.length > 0 && (
+                                <p className="text-[9px] text-yellow-500 mt-1 tracking-wider">
+                                    ⏳ {pendingNormalFiles.length} ảnh đang chờ upload khi bấm "Thêm mới"
+                                </p>
+                            )}
+                            <p className="text-[9px] text-neutral-400 mt-1 tracking-wider">
+                                💡 Chọn ảnh trước, sau đó bấm "Thêm mới" để upload lên Discord CDN
                             </p>
                         </div>
+
+                        {/* Ảnh nhạy cảm */}
+                        <div className="pt-2 border-t border-neutral-100 dark:border-neutral-900">
+                            <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                                <FileCheck className="w-3 h-3" />
+                                Hình nhạy cảm (sổ, mặt tiền có bảng địa chỉ)
+                            </label>
+                            <div className="flex items-center gap-3 flex-wrap mt-2">
+                                <label className="cursor-pointer border border-dashed border-neutral-400 dark:border-neutral-800 hover:border-neutral-950 dark:hover:border-white w-20 h-20 flex flex-col items-center justify-center gap-1.5 transition-all bg-neutral-50 dark:bg-neutral-900/50">
+                                    <Upload className="w-4 h-4 text-neutral-500" />
+                                    <span className="text-[9px] font-bold tracking-wider text-neutral-500 uppercase text-center leading-tight">
+                                        Chọn ảnh
+                                    </span>
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={(e) => handleImageSelect(e, 'sensitive')}
+                                        className="hidden"
+                                        disabled={isUploading}
+                                    />
+                                </label>
+
+                                {/* Ảnh đã upload */}
+                                {uploadedSensitiveImages.map((url, idx) => (
+                                    <div key={`sensitive-${idx}`} className="relative w-20 h-20 border dark:border-neutral-800 overflow-hidden group">
+                                        <img src={url} alt={`Sensitive ${idx + 1}`} className="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            onClick={() => removeUploadedImage(idx, 'sensitive')}
+                                            className="absolute top-1 right-1 bg-neutral-950/80 text-white p-1 hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {/* Ảnh chờ upload */}
+                                {renderPendingPreview(pendingSensitiveFiles, 'sensitive')}
+                            </div>
+
+                            {pendingSensitiveFiles.length > 0 && (
+                                <p className="text-[9px] text-yellow-500 mt-1 tracking-wider">
+                                    ⏳ {pendingSensitiveFiles.length} ảnh nhạy cảm đang chờ upload khi bấm "Thêm mới"
+                                </p>
+                            )}
+                            <p className="text-[9px] text-neutral-400 mt-1 tracking-wider">
+                                🔒 Hình nhạy cảm chỉ hiển thị cho admin, không hiển thị với khách hàng.
+                            </p>
+                        </div>
+
+                        {/* Progress bar khi uploading */}
+                        {isUploading && (
+                            <div className="mt-3 p-3 bg-neutral-100 dark:bg-neutral-900 rounded">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-neutral-600 dark:text-neutral-400">
+                                        {uploadProgress.type === 'normal' ? 'Đang upload ảnh thường' : 'Đang upload ảnh nhạy cảm'}...
+                                    </span>
+                                    <span className="text-neutral-600 dark:text-neutral-400">
+                                        {uploadProgress.current}/{uploadProgress.total}
+                                    </span>
+                                </div>
+                                <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full mt-1 overflow-hidden">
+                                    <div 
+                                        className="h-full bg-neutral-900 dark:bg-white transition-all duration-300 rounded-full"
+                                        style={{ width: `${uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Actions */}
@@ -645,7 +905,12 @@ export function AdminPropertyForm({
                             disabled={isLoading || isUploading}
                             className="flex-1 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-100 py-3 text-xs tracking-widest uppercase font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            {isLoading ? (
+                            {isUploading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    ĐANG UPLOAD ẢNH...
+                                </>
+                            ) : isLoading ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                     ĐANG XỬ LÝ...

@@ -13,6 +13,12 @@ export type NeighborType = 'an_ninh' | 'yen_tinh' | 'dong_bo' | 'nao_nhiet' | 'v
 // Loại hẻm cụt/thông
 export type AlleyEndType = 'cut' | 'thong' | 'khong_xac_dinh';
 
+// Loại hướng
+export type Direction = 'dong' | 'tay' | 'nam' | 'bac' | 'tay_bac' | 'tay_nam' | 'dong_bac' | 'dong_nam' | 'khong_xac_dinh';
+
+// Trạng thái bán
+export type SaleStatus = 'dang_ban' | 'da_ban';
+
 export interface Property {
     id: string;
     title: string;
@@ -29,23 +35,32 @@ export interface Property {
     contactPhone: string;
 
     // Các trường mới
-    hasPlanningIssue: boolean;           // Có dính quy hoạch không
-    hasRoadWidthIssue: boolean;          // Có dính lộ giới không
-    houseType: HouseType;                // Loại nhà
-    googleMapCoordinates: string;        // Tọa độ Google Map (lat,lng)
-    alleyDepth: number;                 // Nhà mấy xẹt (số)
-    alleyType: AlleyType;               // Hẻm gì
-    width: number;                      // Ngang (mét)
-    length: number;                     // Dài (mét)
-    hasConstructionApproval: boolean;   // Hoàn công chưa
-    hasFullConstructionApproval: boolean; // Hoàn công đầy đủ không
-    floors: number;                     // Mấy tầng
-    hasCashFlow: boolean;               // Có dòng tiền không
-    hasFengShuiIssue: boolean;          // Có dính lỗi phong thủy không
-    fengShuiIssue: FengShuiIssue;       // Lỗi phong thủy gì
-    isHardToAccess: boolean;            // Đường vào khó đi không
-    neighborType: NeighborType;         // Hàng xóm
-    alleyEndType: AlleyEndType;         // Hẻm cụt hay hẻm thông
+    hasPlanningIssue: boolean;              // Có dính quy hoạch không
+    hasRoadWidthIssue: boolean;             // Có dính lộ giới không
+    houseType: HouseType;                   // Loại nhà
+    googleMapCoordinates: string;           // Tọa độ Google Map (lat,lng)
+    alleyDepth: number;                     // Nhà mấy xẹt (số)
+    alleyType: AlleyType;                   // Hẻm gì
+    width: number;                          // Ngang (mét)
+    length: number;                         // Dài (mét)
+    hasConstructionApproval: boolean;       // Hoàn công chưa
+    hasFullConstructionApproval: boolean;   // Hoàn công đầy đủ không
+    floors: number;                         // Mấy tầng
+    hasCashFlow: boolean;                   // Có dòng tiền không
+    hasFengShuiIssue: boolean;              // Có dính lỗi phong thủy không
+    fengShuiIssue: FengShuiIssue;           // Lỗi phong thủy gì
+    isHardToAccess: boolean;                // Đường vào khó đi không
+    neighborType: NeighborType;             // Hàng xóm
+    alleyEndType: AlleyEndType;             // Hẻm cụt hay hẻm thông
+
+    // Các trường bổ sung mới
+    saleStatus: SaleStatus;                 // Đã bán/Đang bán
+    floorNumber: number;                    // Tầng thứ mấy (nếu là chung cư)
+    direction: Direction;                   // Hướng nhà
+    isInExistingResidentialArea: boolean;   // Có nằm trong khu dân cư hiện hữu không
+    sensitiveImages: string[];              // Hình nhạy cảm (hình sổ, mặt tiền có bảng địa chỉ,...)
+    hasBuildingPermit: boolean;             // Có giấy phép xây dựng không
+    notes: string;                          // Ghi chú nếu có
 }
 
 export interface GoogleSheetsConfig {
@@ -87,6 +102,14 @@ export interface FilterState {
     alleyType?: string;
     minWidth?: string;
     maxWidth?: string;
+
+    // Các filter bổ sung
+    saleStatus?: string;                    // Lọc theo trạng thái bán
+    direction?: string;                     // Lọc theo hướng
+    hasBuildingPermit?: boolean;            // Lọc theo giấy phép xây dựng
+    isInExistingResidentialArea?: boolean;  // Lọc theo khu dân cư hiện hữu
+    minFloor?: string;                      // Lọc theo tầng tối thiểu
+    maxFloor?: string;                      // Lọc theo tầng tối đa
 }
 
 export interface ToastState {
@@ -107,7 +130,8 @@ export interface GoogleSheetsRow {
     images: string;
     contactName: string;
     contactPhone: string;
-    // Các trường mới
+
+    // Các trường cũ
     hasPlanningIssue: string;
     hasRoadWidthIssue: string;
     houseType: string;
@@ -125,4 +149,13 @@ export interface GoogleSheetsRow {
     isHardToAccess: string;
     neighborType: string;
     alleyEndType: string;
+
+    // Các trường bổ sung mới
+    saleStatus: string;                    // Đã bán/Đang bán
+    floorNumber: string;                   // Tầng thứ mấy
+    direction: string;                     // Hướng
+    isInExistingResidentialArea: string;   // Khu dân cư hiện hữu
+    sensitiveImages: string;               // Hình nhạy cảm (cách nhau bằng dấu phẩy)
+    hasBuildingPermit: string;             // Giấy phép xây dựng
+    notes: string;                         // Ghi chú
 }

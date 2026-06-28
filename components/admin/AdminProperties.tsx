@@ -10,6 +10,11 @@ interface AdminPropertiesProps {
     isLoading: boolean;
     onRefresh: () => void;
     uploadImageToDiscord?: (file: File) => Promise<{ success: boolean; url: string }>;
+    uploadMultipleImages?: (files: File[], onProgress?: (current: number, total: number) => void) => Promise<string[]>;
+    onCreateProperty?: (property: Property) => Promise<Property | null>;
+    onUpdateProperty?: (property: Property) => Promise<Property | null>;
+    onDeleteProperty?: (id: string) => Promise<boolean>;
+    syncToGoogleSheet?: (properties: Property[]) => Promise<boolean>;
 }
 
 export function AdminProperties({
@@ -17,7 +22,12 @@ export function AdminProperties({
     setProperties,
     isLoading,
     onRefresh,
-    uploadImageToDiscord
+    uploadImageToDiscord,
+    uploadMultipleImages,
+    onCreateProperty,
+    onUpdateProperty,
+    onDeleteProperty,
+    syncToGoogleSheet
 }: AdminPropertiesProps) {
     const [search, setSearch] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -29,11 +39,24 @@ export function AdminProperties({
         p.address.toLowerCase().includes(search.toLowerCase())
     );
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (window.confirm('Bạn có chắc muốn xóa bất động sản này?')) {
-            const updated = properties.filter(p => p.id !== id);
-            setProperties(updated);
-            localStorage.setItem('properties_db', JSON.stringify(updated));
+            if (onDeleteProperty) {
+                const success = await onDeleteProperty(id);
+                if (success) {
+                    onRefresh(); // Refresh lại dữ liệu từ Google Sheets
+                } else {
+                    alert('Lỗi khi xóa bất động sản. Vui lòng thử lại.');
+                }
+            } else {
+                // Fallback: chỉ cập nhật state local
+                const updated = properties.filter(p => p.id !== id);
+                setProperties(updated);
+                // Nếu có syncToGoogleSheet, sync lên
+                if (syncToGoogleSheet) {
+                    await syncToGoogleSheet(updated);
+                }
+            }
         }
     };
 
@@ -45,18 +68,46 @@ export function AdminProperties({
     const handleSubmit = async (data: Property) => {
         setIsSubmitting(true);
         try {
-            let updatedProperties: Property[];
-            if (editingProperty) {
-                updatedProperties = properties.map(p =>
-                    p.id === editingProperty.id ? data : p
-                );
+            let result: Property | null = null;
+            
+            if (editingProperty && onUpdateProperty) {
+                // Cập nhật property
+                result = await onUpdateProperty(data);
+                if (result) {
+                    onRefresh(); // Refresh lại dữ liệu từ Google Sheets
+                    setIsFormOpen(false);
+                    setEditingProperty(null);
+                } else {
+                    alert('Lỗi khi cập nhật bất động sản. Vui lòng thử lại.');
+                }
+            } else if (onCreateProperty) {
+                // Tạo mới property
+                result = await onCreateProperty(data);
+                if (result) {
+                    onRefresh(); // Refresh lại dữ liệu từ Google Sheets
+                    setIsFormOpen(false);
+                    setEditingProperty(null);
+                } else {
+                    alert('Lỗi khi tạo bất động sản. Vui lòng thử lại.');
+                }
             } else {
-                updatedProperties = [data, ...properties];
+                // Fallback: chỉ cập nhật state local
+                let updatedProperties: Property[];
+                if (editingProperty) {
+                    updatedProperties = properties.map(p =>
+                        p.id === editingProperty.id ? data : p
+                    );
+                } else {
+                    updatedProperties = [data, ...properties];
+                }
+                setProperties(updatedProperties);
+                // Nếu có syncToGoogleSheet, sync lên
+                if (syncToGoogleSheet) {
+                    await syncToGoogleSheet(updatedProperties);
+                }
+                setIsFormOpen(false);
+                setEditingProperty(null);
             }
-            setProperties(updatedProperties);
-            localStorage.setItem('properties_db', JSON.stringify(updatedProperties));
-            setIsFormOpen(false);
-            setEditingProperty(null);
         } catch (error) {
             console.error('Error saving property:', error);
             alert('Lỗi khi lưu bất động sản. Vui lòng thử lại.');
@@ -215,7 +266,7 @@ export function AdminProperties({
                         setEditingProperty(null);
                     }}
                     isLoading={isSubmitting}
-                    uploadImageToDiscord={uploadImageToDiscord}
+                    uploadMultipleImages={uploadMultipleImages}
                 />
             )}
         </div>

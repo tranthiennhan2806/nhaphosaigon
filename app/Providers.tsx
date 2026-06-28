@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Home, Moon, Sun, Eye } from 'lucide-react';
 
 // Import types and constants
-import { Property, FilterState } from '@/types';
+import { Property, FilterState, AppConfig } from '@/types';
 import { MOCK_PROPERTIES } from '@/configs/constants';
 
 // Import hooks
@@ -24,6 +24,7 @@ export const AppContext = React.createContext<{
     isLoading: boolean;
     handleSyncData: () => Promise<void>;
     savePropertiesState: (newProps: Property[]) => void;
+    uploadImageToDiscord?: (file: File) => Promise<{ success: boolean; url: string }>;
 }>({
     properties: [],
     setProperties: () => { },
@@ -45,6 +46,34 @@ export const AppContext = React.createContext<{
     savePropertiesState: () => { },
 });
 
+// Hàm load config từ environment variables
+const getConfigFromEnv = (): AppConfig => {
+    const config = {
+        spreadsheetId: process.env.NEXT_PUBLIC_SPREADSHEET_ID || "",
+        googleApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",
+        googleClientEmail: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL || "",
+        googlePrivateKey: process.env.NEXT_PUBLIC_GOOGLE_PRIVATE_KEY || "",
+        discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL || "",
+        discordWebhookUrl2: process.env.DISCORD_WEBHOOK_URL_2 || "",
+        isUsingMock: true
+    };
+
+    // Nếu có spreadsheet ID và client email, không dùng mock
+    if (config.spreadsheetId && config.googleClientEmail) {
+        config.isUsingMock = false;
+    }
+
+    console.log('🔍 Providers - Config loaded from env:', {
+        spreadsheetId: config.spreadsheetId ? '✅ Có' : '❌ Không',
+        googleClientEmail: config.googleClientEmail ? '✅ Có' : '❌ Không',
+        hasPrivateKey: !!config.googlePrivateKey,
+        discordWebhookUrl: config.discordWebhookUrl ? '✅ Có' : '❌ Không',
+        isUsingMock: config.isUsingMock
+    });
+
+    return config;
+};
+
 export default function Providers({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const [darkMode, setDarkMode] = useState<boolean>(false);
@@ -60,18 +89,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         location: '',
     });
 
-    // Cấu hình cho Google Sheets (chỉ đọc)
-    const config = {
-        spreadsheetId: process.env.NEXT_PUBLIC_SPREADSHEET_ID || "",
-        googleApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",
-        googleClientEmail: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL || "",
-        googlePrivateKey: process.env.NEXT_PUBLIC_GOOGLE_PRIVATE_KEY || "",
-        discordWebhookUrl: "",
-        discordWebhookUrl2: "",
-        isUsingMock: true
-    };
+    // Load config từ environment variables
+    const config = getConfigFromEnv();
 
-    const { isLoading, fetchProperties } = useGoogleSheets(config);
+    // Khởi tạo hook với config đầy đủ
+    const { isLoading, fetchProperties, uploadImageToDiscord } = useGoogleSheets(config);
 
     // Toast notification
     const showToast = (message: string, type: string = "success") => {
@@ -79,20 +101,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         setTimeout(() => setToast(null), 3000);
     };
 
-    // Load initial data
+    // Load theme từ localStorage (chỉ theme)
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             setDarkMode(true);
-        }
-
-        const savedProperties = localStorage.getItem('properties_db');
-        if (savedProperties) {
-            try {
-                setProperties(JSON.parse(savedProperties));
-            } catch (e) { }
-        } else {
-            localStorage.setItem('properties_db', JSON.stringify(MOCK_PROPERTIES));
         }
     }, []);
 
@@ -106,7 +119,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
     const savePropertiesState = (newProps: Property[]) => {
         setProperties(newProps);
-        localStorage.setItem('properties_db', JSON.stringify(newProps));
     };
 
     const toggleDarkMode = () => {
@@ -130,7 +142,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         return false;
     };
 
-    // 🔴 QUAN TRỌNG: Kiểm tra chính xác đường dẫn admin
+    // Kiểm tra chính xác đường dẫn admin
     const isAdminRoute = pathname?.startsWith('/admin');
 
     // Nếu là admin route, KHÔNG hiển thị frontend layout
@@ -150,6 +162,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             isLoading,
             handleSyncData,
             savePropertiesState,
+            uploadImageToDiscord,
         }}>
             {/* TOAST */}
             {toast && (

@@ -20,7 +20,16 @@ export default function AdminPropertiesPage() {
         isUsingMock: true
     };
 
-    const { fetchProperties, uploadImageToDiscord } = useGoogleSheets(config);
+    // Lấy tất cả functions từ hook
+    const {
+        fetchProperties,
+        uploadImageToDiscord,
+        uploadMultipleImages,
+        createProperty,
+        updateProperty,
+        deleteProperty,
+        syncProperties
+    } = useGoogleSheets(config);
 
     useEffect(() => {
         loadProperties();
@@ -39,6 +48,22 @@ export default function AdminPropertiesPage() {
         }
     };
 
+    // Hàm sync lên Google Sheets
+    const handleSyncToGoogleSheet = async (props: Property[]): Promise<boolean> => {
+        try {
+            const success = await syncProperties(props);
+            if (success) {
+                console.log('✅ Synced to Google Sheets successfully');
+            } else {
+                console.error('❌ Failed to sync to Google Sheets');
+            }
+            return success;
+        } catch (error) {
+            console.error('❌ Error syncing to Google Sheets:', error);
+            return false;
+        }
+    };
+
     return (
         <AdminProperties
             properties={properties}
@@ -46,6 +71,11 @@ export default function AdminPropertiesPage() {
             isLoading={isLoading}
             onRefresh={loadProperties}
             uploadImageToDiscord={uploadImageToDiscord}
+            uploadMultipleImages={uploadMultipleImages}
+            onCreateProperty={createProperty}
+            onUpdateProperty={updateProperty}
+            onDeleteProperty={deleteProperty}
+            syncToGoogleSheet={handleSyncToGoogleSheet}
         />
     );
 }

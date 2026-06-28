@@ -27,7 +27,15 @@ export const SHEET_HEADERS = [
     'Loại lỗi phong thủy',
     'Đường vào khó đi (true/false)',
     'Loại hàng xóm',
-    'Hẻm cụt/thông'
+    'Hẻm cụt/thông',
+    // Các trường bổ sung mới
+    'Trạng thái bán (dang_ban/da_ban)',
+    'Tầng số (chung cư)',
+    'Hướng nhà',
+    'Khu dân cư hiện hữu (true/false)',
+    'Hình nhạy cảm (cách nhau bằng dấu phẩy)',
+    'Giấy phép xây dựng (true/false)',
+    'Ghi chú'
 ];
 
 export const SHEET_HEADERS_MAP = {
@@ -59,7 +67,15 @@ export const SHEET_HEADERS_MAP = {
     'Loại lỗi phong thủy': 'fengShuiIssue',
     'Đường vào khó đi (true/false)': 'isHardToAccess',
     'Loại hàng xóm': 'neighborType',
-    'Hẻm cụt/thông': 'alleyEndType'
+    'Hẻm cụt/thông': 'alleyEndType',
+    // Các trường bổ sung mới
+    'Trạng thái bán (dang_ban/da_ban)': 'saleStatus',
+    'Tầng số (chung cư)': 'floorNumber',
+    'Hướng nhà': 'direction',
+    'Khu dân cư hiện hữu (true/false)': 'isInExistingResidentialArea',
+    'Hình nhạy cảm (cách nhau bằng dấu phẩy)': 'sensitiveImages',
+    'Giấy phép xây dựng (true/false)': 'hasBuildingPermit',
+    'Ghi chú': 'notes'
 };
 
 // Hướng dẫn các giá trị cho các trường enum
@@ -105,5 +121,61 @@ export const ENUM_GUIDE = {
         'cut': 'Hẻm cụt',
         'thong': 'Hẻm thông',
         'khong_xac_dinh': 'Không xác định'
+    },
+    // Các hướng dẫn mới
+    saleStatus: {
+        'dang_ban': 'Đang bán',
+        'da_ban': 'Đã bán'
+    },
+    direction: {
+        'dong': 'Đông',
+        'tay': 'Tây',
+        'nam': 'Nam',
+        'bac': 'Bắc',
+        'tay_bac': 'Tây Bắc',
+        'tay_nam': 'Tây Nam',
+        'dong_bac': 'Đông Bắc',
+        'dong_nam': 'Đông Nam',
+        'khong_xac_dinh': 'Không xác định'
+    }
+};
+
+// Hướng dẫn chi tiết cho từng trường
+export const FIELD_GUIDE = {
+    saleStatus: {
+        description: 'Trạng thái bán của bất động sản',
+        values: ['dang_ban (Đang bán)', 'da_ban (Đã bán)'],
+        default: 'dang_ban'
+    },
+    floorNumber: {
+        description: 'Số tầng của căn hộ (chỉ áp dụng cho chung cư)',
+        example: '15 (tầng 15), 0 (nhà đất không có tầng)'
+    },
+    direction: {
+        description: 'Hướng nhà (theo phong thủy)',
+        values: ['dong (Đông)', 'tay (Tây)', 'nam (Nam)', 'bac (Bắc)',
+            'tay_bac (Tây Bắc)', 'tay_nam (Tây Nam)',
+            'dong_bac (Đông Bắc)', 'dong_nam (Đông Nam)',
+            'khong_xac_dinh (Không xác định)'],
+        default: 'khong_xac_dinh'
+    },
+    isInExistingResidentialArea: {
+        description: 'Bất động sản có nằm trong khu dân cư hiện hữu không',
+        values: ['true (Có)', 'false (Không)'],
+        default: 'false'
+    },
+    sensitiveImages: {
+        description: 'Hình nhạy cảm (hình sổ, hình mặt tiền có bảng địa chỉ, v.v.)',
+        note: 'Các URL ảnh cách nhau bằng dấu phẩy (, )',
+        example: 'https://example.com/so-hong.jpg, https://example.com/mat-tien.jpg'
+    },
+    hasBuildingPermit: {
+        description: 'Bất động sản có giấy phép xây dựng không',
+        values: ['true (Có)', 'false (Không)'],
+        default: 'false'
+    },
+    notes: {
+        description: 'Ghi chú thêm về bất động sản',
+        note: 'Có thể bao gồm thông tin về vị trí, tiện ích, lưu ý đặc biệt, v.v.'
     }
 };

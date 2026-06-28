@@ -7,14 +7,22 @@ import { MapPin, Bed, Bath, ImageIcon } from 'lucide-react';
 interface PropertyCardProps {
     property: Property;
     navigateTo?: (tab: string, id?: string) => void;
+    onOpenPreview?: (property: Property) => void;
 }
 
-export function PropertyCard({ property, navigateTo }: PropertyCardProps) {
+export function PropertyCard({ 
+    property, 
+    navigateTo, 
+    onOpenPreview 
+}: PropertyCardProps) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
 
     const handleClick = () => {
-        if (navigateTo) {
+        // Nếu có onOpenPreview thì mở modal preview, không thì chuyển đến trang detail
+        if (onOpenPreview) {
+            onOpenPreview(property);
+        } else if (navigateTo) {
             navigateTo('detail', property.id);
         } else {
             router.push(`/property/${property.id}`);
@@ -33,7 +41,6 @@ export function PropertyCard({ property, navigateTo }: PropertyCardProps) {
             }}
             className="group bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 cursor-pointer overflow-hidden flex flex-col h-full"
         >
-            {/* Phần còn lại giữ nguyên */}
             <div className="relative h-[210px] bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
                 <img
                     src={property.images[0] || "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80"}

@@ -4,8 +4,11 @@ import {
     ALLEY_TYPES,
     FENG_SHUI_ISSUES,
     NEIGHBOR_TYPES,
-    ALLEY_END_TYPES
+    ALLEY_END_TYPES,
+    DIRECTIONS,
+    SALE_STATUSES
 } from '@/configs/constants';
+import { SignJWT, importPKCS8 } from 'jose';
 
 // Helper để parse boolean từ string
 const parseBoolean = (value: string): boolean => {
@@ -18,6 +21,18 @@ const parseEnum = <T>(value: string, defaultValue: T, validValues: readonly { va
     if (!value) return defaultValue;
     const found = validValues.find(v => v.value === value);
     return found ? value as T : defaultValue;
+};
+
+// Helper để parse direction
+const parseDirection = (value: string): string => {
+    const validDirections = DIRECTIONS.map(d => d.value);
+    return validDirections.includes(value) ? value : 'khong_xac_dinh';
+};
+
+// Helper để parse sale status
+const parseSaleStatus = (value: string): string => {
+    const validStatuses = SALE_STATUSES.map(s => s.value);
+    return validStatuses.includes(value) ? value : 'dang_ban';
 };
 
 export const parseGoogleSheetsData = (rows: string[][]): Property[] => {
@@ -53,7 +68,16 @@ export const parseGoogleSheetsData = (rows: string[][]): Property[] => {
         fengShuiIssue: parseEnum(row[25] || 'khong', 'khong' as const, FENG_SHUI_ISSUES),
         isHardToAccess: parseBoolean(row[26] || 'false'),
         neighborType: parseEnum(row[27] || 'khac', 'khac' as const, NEIGHBOR_TYPES),
-        alleyEndType: parseEnum(row[28] || 'khong_xac_dinh', 'khong_xac_dinh' as const, ALLEY_END_TYPES)
+        alleyEndType: parseEnum(row[28] || 'khong_xac_dinh', 'khong_xac_dinh' as const, ALLEY_END_TYPES),
+
+        // Các trường bổ sung mới (29-35)
+        saleStatus: parseSaleStatus(row[29] || 'dang_ban') as any,
+        floorNumber: Number(row[30]) || 0,
+        direction: parseDirection(row[31] || 'khong_xac_dinh') as any,
+        isInExistingResidentialArea: parseBoolean(row[32] || 'false'),
+        sensitiveImages: row[33] ? row[33].split(',').map((img: string) => img.trim()).filter(Boolean) : [],
+        hasBuildingPermit: parseBoolean(row[34] || 'false'),
+        notes: row[35] || '',
     }));
 };
 
@@ -87,40 +111,50 @@ export const convertToGoogleSheetsFormat = (properties: Property[]): string[][] 
         prop.fengShuiIssue,
         prop.isHardToAccess.toString(),
         prop.neighborType,
-        prop.alleyEndType
+        prop.alleyEndType,
+
+        // Các trường bổ sung mới (29-35)
+        prop.saleStatus,
+        prop.floorNumber.toString(),
+        prop.direction,
+        prop.isInExistingResidentialArea.toString(),
+        prop.sensitiveImages.join(','),
+        prop.hasBuildingPermit.toString(),
+        prop.notes
     ]);
 };
 
+// Định nghĩa tên sheet - sửa thành tên sheet thực tế của bạn
+const SHEET_NAME = 'bds'; // Hoặc 'Sheet1' nếu bạn chưa đổi tên
+
 /**
- * Lấy access token từ Service Account
+ * Lấy access token từ Service Account sử dụng jose
  */
 export const getAccessToken = async (clientEmail: string, privateKey: string): Promise<string> => {
     try {
         // Chuẩn hóa private key
         const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
 
-        // Tạo JWT
+        // Tạo JWT payload
         const now = Math.floor(Date.now() / 1000);
-        const jwtPayload = {
+        
+        // Import private key
+        const privateKeyObj = await importPKCS8(formattedPrivateKey, 'RS256');
+
+        // Tạo JWT token
+        const token = await new SignJWT({
             iss: clientEmail,
             scope: 'https://www.googleapis.com/auth/spreadsheets',
             aud: 'https://oauth2.googleapis.com/token',
             exp: now + 3600,
             iat: now,
-        };
-
-        // Mã hóa JWT
-        const encodedHeader = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-        const encodedPayload = Buffer.from(JSON.stringify(jwtPayload)).toString('base64url');
-        const signatureInput = `${encodedHeader}.${encodedPayload}`;
-
-        // Tạo chữ ký
-        const crypto = require('crypto');
-        const sign = crypto.createSign('SHA256');
-        sign.update(signatureInput);
-        const signature = sign.sign(formattedPrivateKey, 'base64url');
-
-        const jwt = `${signatureInput}.${signature}`;
+        })
+        .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
+        .setIssuedAt()
+        .setExpirationTime('1h')
+        .setIssuer(clientEmail)
+        .setAudience('https://oauth2.googleapis.com/token')
+        .sign(privateKeyObj);
 
         // Lấy access token
         const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -130,7 +164,7 @@ export const getAccessToken = async (clientEmail: string, privateKey: string): P
             },
             body: new URLSearchParams({
                 grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                assertion: jwt,
+                assertion: token,
             }),
         });
 
@@ -154,7 +188,7 @@ export const fetchFromGoogleSheetsWithServiceAccount = async (
     spreadsheetId: string,
     clientEmail: string,
     privateKey: string,
-    range: string = "Sheet1!A2:AC"
+    range: string = `${SHEET_NAME}!A2:AJ`
 ): Promise<Property[]> => {
     try {
         const accessToken = await getAccessToken(clientEmail, privateKey);
@@ -174,8 +208,10 @@ export const fetchFromGoogleSheetsWithServiceAccount = async (
 
         const data = await response.json();
 
-        if (!data.values) {
-            throw new Error("Không tìm thấy dữ liệu trong Google Sheets");
+        // Nếu không có dữ liệu, trả về mảng rỗng thay vì throw error
+        if (!data.values || data.values.length === 0) {
+            console.log("🔹 Không tìm thấy dữ liệu trong Google Sheets, trả về mảng rỗng");
+            return [];
         }
 
         return parseGoogleSheetsData(data.values);
@@ -193,7 +229,7 @@ export const updateGoogleSheetsWithServiceAccount = async (
     clientEmail: string,
     privateKey: string,
     properties: Property[],
-    range: string = "Sheet1!A:AC"
+    range: string = `${SHEET_NAME}!A:AJ`
 ): Promise<boolean> => {
     try {
         const accessToken = await getAccessToken(clientEmail, privateKey);
@@ -243,7 +279,7 @@ export const updateGoogleSheetsWithServiceAccount = async (
 export const fetchFromGoogleSheets = async (
     spreadsheetId: string,
     apiKey: string,
-    range: string = "Sheet1!A2:AC"
+    range: string = `${SHEET_NAME}!A2:AJ`
 ): Promise<Property[]> => {
     if (!spreadsheetId || !apiKey) {
         throw new Error("Thiếu thông tin kết nối Google Sheets");
@@ -260,9 +296,136 @@ export const fetchFromGoogleSheets = async (
 
     const data = await response.json();
 
-    if (!data.values) {
-        throw new Error("Không tìm thấy dữ liệu trong Google Sheets");
+    // Nếu không có dữ liệu, trả về mảng rỗng thay vì throw error
+    if (!data.values || data.values.length === 0) {
+        console.log("🔹 Không tìm thấy dữ liệu trong Google Sheets, trả về mảng rỗng");
+        return [];
     }
 
     return parseGoogleSheetsData(data.values);
+};
+
+/**
+ * Append dữ liệu vào cuối Google Sheets
+ */
+export const appendToGoogleSheets = async (
+    spreadsheetId: string,
+    clientEmail: string,
+    privateKey: string,
+    properties: Property[],
+    range: string = `${SHEET_NAME}!A:AJ`
+): Promise<boolean> => {
+    try {
+        const accessToken = await getAccessToken(clientEmail, privateKey);
+        const rows = convertToGoogleSheetsFormat(properties);
+
+        const payload = {
+            range: range,
+            majorDimension: "ROWS",
+            values: rows,
+        };
+
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=RAW`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Lỗi khi append Google Sheets: ${error.error?.message || response.statusText}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error appending to Google Sheets:', error);
+        throw error;
+    }
+};
+
+/**
+ * Cập nhật 1 row trong Google Sheets theo index
+ */
+export const updateGoogleSheetsRow = async (
+    spreadsheetId: string,
+    clientEmail: string,
+    privateKey: string,
+    property: Property,
+    rowIndex: number,
+    range: string = `${SHEET_NAME}!A:AJ`
+): Promise<boolean> => {
+    try {
+        const accessToken = await getAccessToken(clientEmail, privateKey);
+        const rows = convertToGoogleSheetsFormat([property]);
+
+        const updateRange = `${SHEET_NAME}!A${rowIndex}:AJ${rowIndex}`;
+        const payload = {
+            range: updateRange,
+            majorDimension: "ROWS",
+            values: rows,
+        };
+
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${updateRange}?valueInputOption=RAW`;
+
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Lỗi khi cập nhật row Google Sheets: ${error.error?.message || response.statusText}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error updating row in Google Sheets:', error);
+        throw error;
+    }
+};
+
+/**
+ * Xóa 1 row trong Google Sheets theo index
+ */
+export const deleteFromGoogleSheets = async (
+    spreadsheetId: string,
+    clientEmail: string,
+    privateKey: string,
+    rowIndex: number,
+    range: string = `${SHEET_NAME}!A:AJ`
+): Promise<boolean> => {
+    try {
+        const accessToken = await getAccessToken(clientEmail, privateKey);
+
+        // Xóa nội dung row
+        const deleteRange = `${SHEET_NAME}!A${rowIndex}:AJ${rowIndex}`;
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${deleteRange}:clear`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Lỗi khi xóa row Google Sheets: ${error.error?.message || response.statusText}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error deleting row from Google Sheets:', error);
+        throw error;
+    }
 };

@@ -10,7 +10,9 @@ import {
   ALLEY_TYPES, 
   FENG_SHUI_ISSUES, 
   NEIGHBOR_TYPES, 
-  ALLEY_END_TYPES 
+  ALLEY_END_TYPES,
+  DIRECTIONS,
+  SALE_STATUSES
 } from '@/configs/constants';
 
 interface AdminScreenProps {
@@ -35,7 +37,6 @@ export function AdminScreen({
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Form state
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [price, setPrice] = useState<string>('');
@@ -65,6 +66,13 @@ export function AdminScreen({
   const [isHardToAccess, setIsHardToAccess] = useState<boolean>(false);
   const [neighborType, setNeighborType] = useState<string>('khac');
   const [alleyEndType, setAlleyEndType] = useState<string>('khong_xac_dinh');
+  const [saleStatus, setSaleStatus] = useState<string>('dang_ban');
+  const [floorNumber, setFloorNumber] = useState<number>(0);
+  const [direction, setDirection] = useState<string>('khong_xac_dinh');
+  const [isInExistingResidentialArea, setIsInExistingResidentialArea] = useState<boolean>(false);
+  const [hasBuildingPermit, setHasBuildingPermit] = useState<boolean>(false);
+  const [notes, setNotes] = useState<string>('');
+  const [projectName, setProjectName] = useState<string>('');
 
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -104,6 +112,13 @@ export function AdminScreen({
     setIsHardToAccess(prop.isHardToAccess || false);
     setNeighborType(prop.neighborType || 'khac');
     setAlleyEndType(prop.alleyEndType || 'khong_xac_dinh');
+    setSaleStatus(prop.saleStatus || 'dang_ban');
+    setFloorNumber(prop.floorNumber || 0);
+    setDirection(prop.direction || 'khong_xac_dinh');
+    setIsInExistingResidentialArea(prop.isInExistingResidentialArea || false);
+    setHasBuildingPermit(prop.hasBuildingPermit || false);
+    setNotes(prop.notes || '');
+    setProjectName(prop.projectName || '');
   };
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,7 +175,7 @@ export function AdminScreen({
       contactName: contactName || "CHÍNH CHỦ",
       contactPhone: contactPhone || "0901234567",
       
-      // Các trường mới
+      // Các trường cũ
       hasPlanningIssue,
       hasRoadWidthIssue,
       houseType: houseType as any,
@@ -177,7 +192,17 @@ export function AdminScreen({
       fengShuiIssue: fengShuiIssue as any,
       isHardToAccess,
       neighborType: neighborType as any,
-      alleyEndType: alleyEndType as any
+      alleyEndType: alleyEndType as any,
+      
+      // Các trường bổ sung mới
+      saleStatus: saleStatus as any,
+      floorNumber,
+      direction: direction as any,
+      isInExistingResidentialArea,
+      sensitiveImages: [], // Chưa có sensitive images trong AdminScreen
+      hasBuildingPermit,
+      notes,
+      projectName
     };
 
     let updatedList: Property[];
@@ -233,6 +258,13 @@ export function AdminScreen({
     setIsHardToAccess(false);
     setNeighborType('khac');
     setAlleyEndType('khong_xac_dinh');
+    setSaleStatus('dang_ban');
+    setFloorNumber(0);
+    setDirection('khong_xac_dinh');
+    setIsInExistingResidentialArea(false);
+    setHasBuildingPermit(false);
+    setNotes('');
+    setProjectName('');
   };
 
   return (
@@ -262,7 +294,6 @@ export function AdminScreen({
           </div>
 
           <form onSubmit={handleFormSubmit} className="space-y-4">
-            {/* Thông tin cơ bản */}
             <div className="space-y-1">
               <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">TIÊU ĐỀ KHÔNG GIAN *</label>
               <input
@@ -286,17 +317,16 @@ export function AdminScreen({
               ></textarea>
             </div>
 
-            {/* Location & Pricing */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">KHU VỰC *</label>
                 <select
                   value={district}
                   onChange={e => setDistrict(e.target.value)}
-                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white cursor-pointer text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900"
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white cursor-pointer"
                 >
                   {TARGET_DISTRICTS.map((dst, i) => (
-                    <option key={i} value={dst} className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100">{dst}</option>
+                    <option key={i} value={dst}>{dst}</option>
                   ))}
                 </select>
               </div>
@@ -349,7 +379,6 @@ export function AdminScreen({
               />
             </div>
 
-            {/* Bedrooms & Bathrooms */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">PHÒNG NGỦ</label>
@@ -371,231 +400,280 @@ export function AdminScreen({
               </div>
             </div>
 
-            {/* Thông tin chi tiết về nhà */}
-            <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4">
-              <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase mb-3">THÔNG TIN CHI TIẾT BẤT ĐỘNG SẢN</h4>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">LOẠI NHÀ</label>
-                  <select
-                    value={houseType}
-                    onChange={e => setHouseType(e.target.value)}
-                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
-                  >
-                    {HOUSE_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">SỐ TẦNG</label>
-                  <input
-                    type="number"
-                    value={floors}
-                    onChange={e => setFloors(Number(e.target.value))}
-                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">NGANG (M)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={width}
-                    onChange={e => setWidth(Number(e.target.value))}
-                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">DÀI (M)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={length}
-                    onChange={e => setLength(Number(e.target.value))}
-                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Thông tin về hẻm */}
-            <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4">
-              <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase mb-3">THÔNG TIN HẺM</h4>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">SỐ XẸT</label>
-                  <input
-                    type="number"
-                    value={alleyDepth}
-                    onChange={e => setAlleyDepth(Number(e.target.value))}
-                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">LOẠI HẺM</label>
-                  <select
-                    value={alleyType}
-                    onChange={e => setAlleyType(e.target.value)}
-                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
-                  >
-                    {ALLEY_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">HẺM CỤT/THÔNG</label>
-                  <select
-                    value={alleyEndType}
-                    onChange={e => setAlleyEndType(e.target.value)}
-                    className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
-                  >
-                    {ALLEY_END_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1 flex items-center">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={isHardToAccess}
-                      onChange={e => setIsHardToAccess(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    ĐƯỜNG VÀO KHÓ ĐI
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Pháp lý & Tình trạng */}
-            <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4">
-              <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase mb-3">PHÁP LÝ & TÌNH TRẠNG</h4>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1 flex items-center">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={hasPlanningIssue}
-                      onChange={e => setHasPlanningIssue(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    DÍNH QUY HOẠCH
-                  </label>
-                </div>
-
-                <div className="space-y-1 flex items-center">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={hasRoadWidthIssue}
-                      onChange={e => setHasRoadWidthIssue(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    DÍNH LỘ GIỚI
-                  </label>
-                </div>
-
-                <div className="space-y-1 flex items-center">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={hasConstructionApproval}
-                      onChange={e => setHasConstructionApproval(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    ĐÃ HOÀN CÔNG
-                  </label>
-                </div>
-
-                <div className="space-y-1 flex items-center">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={hasFullConstructionApproval}
-                      onChange={e => setHasFullConstructionApproval(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    HOÀN CÔNG ĐẦY ĐỦ
-                  </label>
-                </div>
-
-                <div className="space-y-1 flex items-center">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={hasCashFlow}
-                      onChange={e => setHasCashFlow(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    CÓ DÒNG TIỀN
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Phong thủy */}
-            <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4">
-              <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase mb-3">PHONG THỦY</h4>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1 flex items-center">
-                  <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={hasFengShuiIssue}
-                      onChange={e => setHasFengShuiIssue(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    CÓ LỖI PHONG THỦY
-                  </label>
-                </div>
-
-                {hasFengShuiIssue && (
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">LOẠI LỖI</label>
-                    <select
-                      value={fengShuiIssue}
-                      onChange={e => setFengShuiIssue(e.target.value)}
-                      className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
-                    >
-                      {FENG_SHUI_ISSUES.map((type) => (
-                        <option key={type.value} value={type.value}>{type.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Hàng xóm */}
-            <div className="border-t border-neutral-200 dark:border-neutral-800 pt-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">HÀNG XÓM</label>
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">LOẠI NHÀ</label>
                 <select
-                  value={neighborType}
-                  onChange={e => setNeighborType(e.target.value)}
+                  value={houseType}
+                  onChange={e => setHouseType(e.target.value)}
                   className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
                 >
-                  {NEIGHBOR_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>{type.label}</option>
+                  {HOUSE_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">SỐ TẦNG</label>
+                <input
+                  type="number"
+                  value={floors}
+                  onChange={e => setFloors(Number(e.target.value))}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">NGANG (M)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={width}
+                  onChange={e => setWidth(Number(e.target.value))}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">DÀI (M)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={length}
+                  onChange={e => setLength(Number(e.target.value))}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">SỐ XẸT</label>
+                <input
+                  type="number"
+                  value={alleyDepth}
+                  onChange={e => setAlleyDepth(Number(e.target.value))}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">LOẠI HẺM</label>
+                <select
+                  value={alleyType}
+                  onChange={e => setAlleyType(e.target.value)}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+                >
+                  {ALLEY_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {/* Contact Info */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">HẺM CỤT/THÔNG</label>
+                <select
+                  value={alleyEndType}
+                  onChange={e => setAlleyEndType(e.target.value)}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+                >
+                  {ALLEY_END_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">HƯỚNG NHÀ</label>
+                <select
+                  value={direction}
+                  onChange={e => setDirection(e.target.value)}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+                >
+                  {DIRECTIONS.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">TRẠNG THÁI BÁN</label>
+                <select
+                  value={saleStatus}
+                  onChange={e => setSaleStatus(e.target.value)}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+                >
+                  {SALE_STATUSES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">TẦNG SỐ (CHUNG CƯ)</label>
+                <input
+                  type="number"
+                  value={floorNumber}
+                  onChange={e => setFloorNumber(Number(e.target.value))}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+                />
+              </div>
+            </div>
+
+            {houseType === 'chung_cu' && (
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">TÊN DỰ ÁN</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Vinhomes Golden River, Sunrise City..."
+                  value={projectName}
+                  onChange={e => setProjectName(e.target.value)}
+                  className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs tracking-widest uppercase focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white"
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1 flex items-center">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={hasPlanningIssue}
+                    onChange={e => setHasPlanningIssue(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  DÍNH QUY HOẠCH
+                </label>
+              </div>
+
+              <div className="space-y-1 flex items-center">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={hasRoadWidthIssue}
+                    onChange={e => setHasRoadWidthIssue(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  DÍNH LỘ GIỚI
+                </label>
+              </div>
+
+              <div className="space-y-1 flex items-center">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={hasConstructionApproval}
+                    onChange={e => setHasConstructionApproval(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  ĐÃ HOÀN CÔNG
+                </label>
+              </div>
+
+              <div className="space-y-1 flex items-center">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={hasFullConstructionApproval}
+                    onChange={e => setHasFullConstructionApproval(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  HOÀN CÔNG ĐẦY ĐỦ
+                </label>
+              </div>
+
+              <div className="space-y-1 flex items-center">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={hasCashFlow}
+                    onChange={e => setHasCashFlow(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  CÓ DÒNG TIỀN
+                </label>
+              </div>
+
+              <div className="space-y-1 flex items-center">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={isInExistingResidentialArea}
+                    onChange={e => setIsInExistingResidentialArea(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  KDC HIỆN HỮU
+                </label>
+              </div>
+
+              <div className="space-y-1 flex items-center">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={hasBuildingPermit}
+                    onChange={e => setHasBuildingPermit(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  GP XÂY DỰNG
+                </label>
+              </div>
+
+              <div className="space-y-1 flex items-center">
+                <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={isHardToAccess}
+                    onChange={e => setIsHardToAccess(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  ĐƯỜNG VÀO KHÓ ĐI
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">LỖI PHONG THỦY</label>
+              <select
+                value={fengShuiIssue}
+                onChange={e => setFengShuiIssue(e.target.value)}
+                className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+              >
+                {FENG_SHUI_ISSUES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">HÀNG XÓM</label>
+              <select
+                value={neighborType}
+                onChange={e => setNeighborType(e.target.value)}
+                className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none dark:text-white"
+              >
+                {NEIGHBOR_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">GHI CHÚ</label>
+              <textarea
+                rows={2}
+                placeholder="GHI CHÚ THÊM..."
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white"
+              />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-neutral-100 dark:border-neutral-900 pt-4">
               <div className="space-y-1">
                 <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">NGƯỜI LIÊN HỆ</label>
@@ -619,7 +697,6 @@ export function AdminScreen({
               </div>
             </div>
 
-            {/* Image Upload */}
             <div className="space-y-3 border-t border-neutral-100 dark:border-neutral-900 pt-4">
               <div>
                 <label className="text-[9px] font-bold tracking-widest text-neutral-400 uppercase">ẢNH MINIMAL (UPLOADING CDN)</label>
@@ -699,3 +776,5 @@ export function AdminScreen({
     </div>
   );
 }
+
+export default AdminScreen;

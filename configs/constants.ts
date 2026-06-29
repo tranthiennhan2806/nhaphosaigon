@@ -122,7 +122,8 @@ export const MOCK_PROPERTIES: Property[] = [
             "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?auto=format&fit=crop&w=800&q=80"
         ],
         hasBuildingPermit: true,
-        notes: "Căn hộ góc, view sông đẹp, gần trường học và bệnh viện"
+        notes: "Căn hộ góc, view sông đẹp, gần trường học và bệnh viện",
+        projectName: "Vinhomes Golden River"
     },
     {
         id: "prop-2",
@@ -167,7 +168,8 @@ export const MOCK_PROPERTIES: Property[] = [
             "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80"
         ],
         hasBuildingPermit: true,
-        notes: "Mặt tiền đường lớn, thuận tiện kinh doanh đa ngành nghề"
+        notes: "Mặt tiền đường lớn, thuận tiện kinh doanh đa ngành nghề",
+        projectName: ""
     },
     {
         id: "prop-3",
@@ -213,7 +215,8 @@ export const MOCK_PROPERTIES: Property[] = [
             "https://images.unsplash.com/photo-1560185008-b5ca58f9a411?auto=format&fit=crop&w=800&q=80"
         ],
         hasBuildingPermit: true,
-        notes: "Penthouse 2 tầng, hồ bơi riêng, view toàn thành phố"
+        notes: "Penthouse 2 tầng, hồ bơi riêng, view toàn thành phố",
+        projectName: "Sunrise City"
     },
     {
         id: "prop-4",
@@ -258,7 +261,8 @@ export const MOCK_PROPERTIES: Property[] = [
             "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?auto=format&fit=crop&w=800&q=80"
         ],
         hasBuildingPermit: true,
-        notes: "Full nội thất cao cấp, thang máy, bảo vệ 24/7"
+        notes: "Full nội thất cao cấp, thang máy, bảo vệ 24/7",
+        projectName: "The Prince Residence"
     },
     {
         id: "prop-5",
@@ -304,7 +308,8 @@ export const MOCK_PROPERTIES: Property[] = [
             "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80"
         ],
         hasBuildingPermit: true,
-        notes: "Biệt thự view sông, sân vườn 200m², hồ bơi riêng"
+        notes: "Biệt thự view sông, sân vườn 200m², hồ bơi riêng",
+        projectName: "Lavila"
     },
     {
         id: "prop-6",
@@ -350,7 +355,8 @@ export const MOCK_PROPERTIES: Property[] = [
             "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?auto=format&fit=crop&w=800&q=80"
         ],
         hasBuildingPermit: true,
-        notes: "Nhà mới xây 3 tầng, có thang máy, hẻm rộng 5m"
+        notes: "Nhà mới xây 3 tầng, có thang máy, hẻm rộng 5m",
+        projectName: ""
     },
     {
         id: "prop-7",
@@ -395,7 +401,8 @@ export const MOCK_PROPERTIES: Property[] = [
             "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?auto=format&fit=crop&w=800&q=80"
         ],
         hasBuildingPermit: false,
-        notes: "Đất sạch, sổ đỏ, xây dựng tự do"
+        notes: "Đất sạch, sổ đỏ, xây dựng tự do",
+        projectName: "Phú Mỹ Hưng"
     },
     {
         id: "prop-8",
@@ -440,6 +447,7 @@ export const MOCK_PROPERTIES: Property[] = [
             "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?auto=format&fit=crop&w=800&q=80"
         ],
         hasBuildingPermit: true,
-        notes: "Nhà cấp 4 diện tích lớn, tiện xây mới hoặc cải tạo"
+        notes: "Nhà cấp 4 diện tích lớn, tiện xây mới hoặc cải tạo",
+        projectName: ""
     }
 ];

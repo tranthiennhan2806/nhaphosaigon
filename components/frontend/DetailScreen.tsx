@@ -1,17 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { Property } from '@/types';
-import { 
+import {
     ChevronLeft, Phone, MapPin, Bath, Bed, Maximize, Info,
     Building2, Ruler, Home, Navigation, Car, Users, DollarSign,
     CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
 import PropertyCard from './PropertyCard';
 import { formatPrice } from '@/utils/format';
-import { 
-    HOUSE_TYPES, 
-    ALLEY_TYPES, 
-    FENG_SHUI_ISSUES, 
-    NEIGHBOR_TYPES, 
+import {
+    HOUSE_TYPES,
+    ALLEY_TYPES,
+    FENG_SHUI_ISSUES,
+    NEIGHBOR_TYPES,
     ALLEY_END_TYPES,
     DIRECTIONS,
     SALE_STATUSES
@@ -113,11 +113,10 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
                             />
 
                             {/* Trạng thái bán */}
-                            <span className={`absolute top-4 left-4 px-3 py-1 text-[9px] tracking-widest uppercase font-bold z-10 ${
-                                property.saleStatus === 'da_ban' 
-                                    ? 'bg-rose-600 text-white' 
+                            <span className={`absolute top-4 left-4 px-3 py-1 text-[9px] tracking-widest uppercase font-bold z-10 ${property.saleStatus === 'da_ban'
+                                    ? 'bg-rose-600 text-white'
                                     : 'bg-neutral-950 text-white dark:bg-white dark:text-neutral-950'
-                            }`}>
+                                }`}>
                                 {getSaleStatusLabel(property.saleStatus)}
                             </span>
 
@@ -143,6 +142,14 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
 
                     {/* Price & Basic Info */}
                     <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 p-6 space-y-6">
+                        {property.houseType === 'chung_cu' && property.projectName && (
+                            <div className="flex items-center gap-2 mt-1">
+                                <Building2 className="w-3.5 h-3.5 text-neutral-400" />
+                                <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                    Dự án: {property.projectName}
+                                </span>
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <div className="flex items-start justify-between">
                                 <h1 className="text-xl sm:text-2xl font-light tracking-wide dark:text-white flex-1">
@@ -257,9 +264,8 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
                                     <AlertCircle className="w-4 h-4 text-neutral-400" />
                                     <div>
                                         <span className="text-[9px] text-neutral-400 block">HẺM</span>
-                                        <span className={`font-semibold text-xs ${
-                                            property.alleyEndType === 'cut' ? 'text-amber-600' : 'text-emerald-600'
-                                        }`}>
+                                        <span className={`font-semibold text-xs ${property.alleyEndType === 'cut' ? 'text-amber-600' : 'text-emerald-600'
+                                            }`}>
                                             {getAlleyEndLabel(property.alleyEndType)}
                                         </span>
                                     </div>
@@ -358,8 +364,8 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
                                             <CheckCircle className="w-4 h-4 text-emerald-600" />
                                         )}
                                         <span className="text-xs">
-                                            {property.hasFengShuiIssue 
-                                                ? `Có lỗi phong thủy: ${getFengShuiLabel(property.fengShuiIssue)}` 
+                                            {property.hasFengShuiIssue
+                                                ? `Có lỗi phong thủy: ${getFengShuiLabel(property.fengShuiIssue)}`
                                                 : 'Không có lỗi phong thủy'}
                                         </span>
                                     </div>

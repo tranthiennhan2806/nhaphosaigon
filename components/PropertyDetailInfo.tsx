@@ -53,6 +53,15 @@ export function PropertyDetailInfo({ property }: PropertyDetailInfoProps) {
             <div className="grid grid-cols-2 gap-6">
                 {/* Thông tin cơ bản */}
                 <div className="space-y-3">
+                    {property.houseType === 'chung_cu' && property.projectName && (
+                        <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-neutral-400" />
+                            <div>
+                                <span className="text-[9px] text-neutral-400 block">DỰ ÁN</span>
+                                <span className="font-semibold dark:text-white text-xs">{property.projectName}</span>
+                            </div>
+                        </div>
+                    )}
                     <div className="flex items-center gap-2">
                         <Home className="w-4 h-4 text-neutral-400" />
                         <div>

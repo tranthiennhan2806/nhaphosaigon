@@ -78,6 +78,7 @@ export const parseGoogleSheetsData = (rows: string[][]): Property[] => {
         sensitiveImages: row[33] ? row[33].split(',').map((img: string) => img.trim()).filter(Boolean) : [],
         hasBuildingPermit: parseBoolean(row[34] || 'false'),
         notes: row[35] || '',
+        projectName: row[36] || ''
     }));
 };
 
@@ -120,7 +121,8 @@ export const convertToGoogleSheetsFormat = (properties: Property[]): string[][] 
         prop.isInExistingResidentialArea.toString(),
         prop.sensitiveImages.join(','),
         prop.hasBuildingPermit.toString(),
-        prop.notes
+        prop.notes,
+        prop.projectName
     ]);
 };
 

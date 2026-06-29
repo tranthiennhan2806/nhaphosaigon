@@ -35,7 +35,8 @@ export const SHEET_HEADERS = [
     'Khu dân cư hiện hữu (true/false)',
     'Hình nhạy cảm (cách nhau bằng dấu phẩy)',
     'Giấy phép xây dựng (true/false)',
-    'Ghi chú'
+    'Ghi chú',
+    'Project Name (Tên dự án)'
 ];
 
 export const SHEET_HEADERS_MAP = {
@@ -75,7 +76,8 @@ export const SHEET_HEADERS_MAP = {
     'Khu dân cư hiện hữu (true/false)': 'isInExistingResidentialArea',
     'Hình nhạy cảm (cách nhau bằng dấu phẩy)': 'sensitiveImages',
     'Giấy phép xây dựng (true/false)': 'hasBuildingPermit',
-    'Ghi chú': 'notes'
+    'Ghi chú': 'notes',
+    'Project Name (Tên dự án)': 'projectName'
 };
 
 // Hướng dẫn các giá trị cho các trường enum

@@ -8,7 +8,6 @@ import {
     updateGoogleSheetsRow,
     deleteFromGoogleSheets
 } from '@/utils/googleSheets';
-import { MOCK_PROPERTIES } from '@/configs/constants';
 
 // Định nghĩa tên sheet
 const SHEET_1 = 'bds';
@@ -23,8 +22,7 @@ export const useGoogleSheets = (config: AppConfig) => {
         googleClientEmail: config.googleClientEmail,
         hasPrivateKey: !!config.googlePrivateKey,
         discordWebhookUrl: config.discordWebhookUrl,
-        discordWebhookUrl2: config.discordWebhookUrl2,
-        isUsingMock: config.isUsingMock
+        discordWebhookUrl2: config.discordWebhookUrl2
     });
 
     // Hàm lấy tất cả properties từ Google Sheets
@@ -34,8 +32,7 @@ export const useGoogleSheets = (config: AppConfig) => {
 
         try {
             if (!config.spreadsheetId) {
-                console.log("🔹 Đang sử dụng dữ liệu mock (không có spreadsheet ID)");
-                return MOCK_PROPERTIES;
+                throw new Error("Thiếu spreadsheet ID");
             }
 
             if (config.googleClientEmail && config.googlePrivateKey) {
@@ -44,7 +41,7 @@ export const useGoogleSheets = (config: AppConfig) => {
                     config.spreadsheetId,
                     config.googleClientEmail,
                     config.googlePrivateKey,
-                    `${SHEET_1}!A2:AJ`
+                    `${SHEET_1}!A1:AK`
                 );
                 console.log(`✅ Đã fetch ${properties.length} properties từ Google Sheets`);
                 return properties;
@@ -55,19 +52,18 @@ export const useGoogleSheets = (config: AppConfig) => {
                 const properties = await fetchFromGoogleSheets(
                     config.spreadsheetId,
                     config.googleApiKey,
-                    `${SHEET_1}!A2:AJ`
+                    `${SHEET_1}!A2:AK`
                 );
                 console.log(`✅ Đã fetch ${properties.length} properties từ Google Sheets`);
                 return properties;
             }
 
-            console.log("🔹 Không có phương thức xác thực, sử dụng mock data");
-            return MOCK_PROPERTIES;
+            throw new Error("Không có phương thức xác thực");
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Lỗi không xác định khi fetch Google Sheets";
             setError(errorMessage);
             console.error("❌ Lỗi fetch Google Sheets:", err);
-            return MOCK_PROPERTIES;
+            throw err;
         } finally {
             setIsLoading(false);
         }
@@ -80,32 +76,35 @@ export const useGoogleSheets = (config: AppConfig) => {
 
         try {
             if (!config.spreadsheetId) {
-                console.log("🔹 Không thể tạo property (thiếu spreadsheet ID)");
-                return null;
+                throw new Error("Thiếu spreadsheet ID");
             }
 
             if (config.googleClientEmail && config.googlePrivateKey) {
                 console.log("🔹 Đang thêm mới property vào Google Sheets...");
-                
-                // Append property vào sheet
+
+                // Đảm bảo ID là duy nhất
+                const newProperty = {
+                    ...property,
+                    id: property.id || `prop-${Date.now()}`
+                };
+
                 const success = await appendToGoogleSheets(
                     config.spreadsheetId,
                     config.googleClientEmail,
                     config.googlePrivateKey,
-                    [property],
-                    `${SHEET_1}!A:AJ`
+                    [newProperty],
+                    `${SHEET_1}!A:AK`
                 );
 
                 if (success) {
                     console.log('✅ Created property successfully');
-                    return property;
+                    return newProperty;
                 } else {
                     throw new Error('Failed to append to Google Sheets');
                 }
             }
 
-            console.log("🔹 Không thể tạo property (thiếu Service Account credentials)");
-            return null;
+            throw new Error("Không có Service Account credentials");
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Lỗi không xác định khi tạo property";
             setError(errorMessage);
@@ -123,41 +122,45 @@ export const useGoogleSheets = (config: AppConfig) => {
 
         try {
             if (!config.spreadsheetId) {
-                console.log("🔹 Không thể cập nhật property (thiếu spreadsheet ID)");
-                return null;
+                throw new Error("Thiếu spreadsheet ID");
             }
 
             if (config.googleClientEmail && config.googlePrivateKey) {
                 console.log("🔹 Đang cập nhật property trong Google Sheets...");
-                
+                console.log(`🔹 Updating property with ID: ${property.id}`);
+
                 // Fetch current properties để tìm row index
                 const currentProperties = await fetchProperties();
                 const existingIndex = currentProperties.findIndex(p => p.id === property.id);
-                
+
                 if (existingIndex === -1) {
-                    throw new Error('Property not found');
+                    throw new Error(`Property with ID ${property.id} not found`);
                 }
 
-                // Update property theo row index (row 2 = index 0)
+                // Giữ nguyên ID khi update
+                const updateData = {
+                    ...property,
+                    id: property.id // Giữ nguyên ID
+                };
+
                 const success = await updateGoogleSheetsRow(
                     config.spreadsheetId,
                     config.googleClientEmail,
                     config.googlePrivateKey,
-                    property,
+                    updateData,
                     existingIndex + 2,
-                    `${SHEET_1}!A:AJ`
+                    `${SHEET_1}!A:AK`
                 );
 
                 if (success) {
                     console.log('✅ Updated property successfully');
-                    return property;
+                    return updateData;
                 } else {
                     throw new Error('Failed to update Google Sheets');
                 }
             }
 
-            console.log("🔹 Không thể cập nhật property (thiếu Service Account credentials)");
-            return null;
+            throw new Error("Không có Service Account credentials");
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Lỗi không xác định khi cập nhật property";
             setError(errorMessage);
@@ -175,28 +178,25 @@ export const useGoogleSheets = (config: AppConfig) => {
 
         try {
             if (!config.spreadsheetId) {
-                console.log("🔹 Không thể xóa property (thiếu spreadsheet ID)");
-                return false;
+                throw new Error("Thiếu spreadsheet ID");
             }
 
             if (config.googleClientEmail && config.googlePrivateKey) {
-                console.log("🔹 Đang xóa property trong Google Sheets...");
-                
-                // Fetch current properties để tìm row index
+                console.log(`🔹 Đang xóa property với ID: ${id} trong Google Sheets...`);
+
                 const currentProperties = await fetchProperties();
                 const existingIndex = currentProperties.findIndex(p => p.id === id);
-                
+
                 if (existingIndex === -1) {
-                    throw new Error('Property not found');
+                    throw new Error(`Property with ID ${id} not found`);
                 }
 
-                // Xóa row theo index
                 const success = await deleteFromGoogleSheets(
                     config.spreadsheetId,
                     config.googleClientEmail,
                     config.googlePrivateKey,
                     existingIndex + 2,
-                    `${SHEET_1}!A:AJ`
+                    `${SHEET_1}!A:AK`
                 );
 
                 if (success) {
@@ -207,8 +207,7 @@ export const useGoogleSheets = (config: AppConfig) => {
                 }
             }
 
-            console.log("🔹 Không thể xóa property (thiếu Service Account credentials)");
-            return false;
+            throw new Error("Không có Service Account credentials");
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Lỗi không xác định khi xóa property";
             setError(errorMessage);
@@ -228,8 +227,7 @@ export const useGoogleSheets = (config: AppConfig) => {
 
         try {
             if (!config.spreadsheetId) {
-                console.log("🔹 Không thể sync lên Google Sheets (thiếu spreadsheet ID)");
-                return false;
+                throw new Error("Thiếu spreadsheet ID");
             }
 
             if (config.googleClientEmail && config.googlePrivateKey) {
@@ -239,14 +237,13 @@ export const useGoogleSheets = (config: AppConfig) => {
                     config.googleClientEmail,
                     config.googlePrivateKey,
                     properties,
-                    `${SHEET_1}!A:AJ`
+                    `${SHEET_1}!A:AK`
                 );
                 console.log("✅ Đã sync thành công lên Google Sheets");
                 return true;
             }
 
-            console.log("🔹 Không thể sync lên Google Sheets (thiếu Service Account credentials)");
-            return false;
+            throw new Error("Không có Service Account credentials");
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Lỗi không xác định khi sync Google Sheets";
             setError(errorMessage);

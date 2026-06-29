@@ -61,6 +61,7 @@ export interface Property {
     sensitiveImages: string[];              // Hình nhạy cảm (hình sổ, mặt tiền có bảng địa chỉ,...)
     hasBuildingPermit: boolean;             // Có giấy phép xây dựng không
     notes: string;                          // Ghi chú nếu có
+    projectName: string;                    // Tên dự án (nếu là chung cư)
 }
 
 export interface GoogleSheetsConfig {
@@ -110,6 +111,7 @@ export interface FilterState {
     isInExistingResidentialArea?: boolean;  // Lọc theo khu dân cư hiện hữu
     minFloor?: string;                      // Lọc theo tầng tối thiểu
     maxFloor?: string;                      // Lọc theo tầng tối đa
+    projectName?: string;                   // Lọc theo tên dự án
 }
 
 export interface ToastState {
@@ -158,4 +160,5 @@ export interface GoogleSheetsRow {
     sensitiveImages: string;               // Hình nhạy cảm (cách nhau bằng dấu phẩy)
     hasBuildingPermit: string;             // Giấy phép xây dựng
     notes: string;                         // Ghi chú
+    projectName: string;                   // Tên dự án
 }

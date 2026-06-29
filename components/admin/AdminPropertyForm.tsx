@@ -72,6 +72,7 @@ export function AdminPropertyForm({
         sensitiveImages: [],
         hasBuildingPermit: false,
         notes: '',
+        projectName: ''
     });
 
     const [uploadedImages, setUploadedImages] = useState<string[]>([]);
@@ -145,7 +146,7 @@ export function AdminPropertyForm({
         if (pendingNormalFiles.length > 0 && uploadMultipleImages) {
             setIsUploading(true);
             setUploadProgress({ current: 0, total: pendingNormalFiles.length, type: 'normal' });
-            
+
             try {
                 const urls = await uploadMultipleImages(pendingNormalFiles, (current, total) => {
                     setUploadProgress({ current, total, type: 'normal' });
@@ -165,7 +166,7 @@ export function AdminPropertyForm({
         if (pendingSensitiveFiles.length > 0 && uploadMultipleImages) {
             setIsUploading(true);
             setUploadProgress({ current: 0, total: pendingSensitiveFiles.length, type: 'sensitive' });
-            
+
             try {
                 const urls = await uploadMultipleImages(pendingSensitiveFiles, (current, total) => {
                     setUploadProgress({ current, total, type: 'sensitive' });
@@ -183,9 +184,15 @@ export function AdminPropertyForm({
 
         setIsUploading(false);
 
-        // Gom tất cả dữ liệu vào 1 object Property
+        // QUAN TRỌNG: Giữ nguyên ID nếu có initialData (đang edit)
+        // KHÔNG tạo ID mới khi edit
+        const propertyId = initialData?.id || `prop-${Date.now()}`;
+
+        console.log('🔑 Property ID:', propertyId);
+        console.log('📝 isEditing:', !!initialData?.id);
+
         const propertyData: Property = {
-            id: initialData?.id || `prop-${Date.now()}`,
+            id: propertyId, // Nếu có initialData.id thì giữ nguyên, nếu không thì tạo mới
             title: formData.title || '',
             description: formData.description || '',
             price: Number(formData.price) || 0,
@@ -222,9 +229,10 @@ export function AdminPropertyForm({
             sensitiveImages: finalSensitiveImages,
             hasBuildingPermit: formData.hasBuildingPermit || false,
             notes: formData.notes || '',
+            projectName: formData.projectName || ''
         };
 
-        // Gửi 1 lần duy nhất lên Google Sheets
+        // Gửi lên component cha
         onSubmit(propertyData);
     };
 
@@ -263,7 +271,7 @@ export function AdminPropertyForm({
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {/* ... Tất cả các phần form giữ nguyên ... */}
-                    
+
                     {/* Thông tin cơ bản */}
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase border-b border-neutral-200 dark:border-neutral-900 pb-2">
@@ -382,6 +390,23 @@ export function AdminPropertyForm({
                                     ))}
                                 </select>
                             </div>
+                            {formData.houseType === 'chung_cu' && (
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
+                                        <Building2 className="w-3 h-3 inline mr-1" /> Tên dự án
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ví dụ: Vinhomes Golden River, Sunrise City..."
+                                        value={formData.projectName || ''}
+                                        onChange={(e) => handleChange('projectName', e.target.value)}
+                                        className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-3 text-xs tracking-widest uppercase focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white"
+                                    />
+                                    <p className="text-[9px] text-neutral-400 tracking-wider">
+                                        💡 Chỉ nhập khi loại nhà là "Chung cư"
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -889,7 +914,7 @@ export function AdminPropertyForm({
                                     </span>
                                 </div>
                                 <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full mt-1 overflow-hidden">
-                                    <div 
+                                    <div
                                         className="h-full bg-neutral-900 dark:bg-white transition-all duration-300 rounded-full"
                                         style={{ width: `${uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0}%` }}
                                     />

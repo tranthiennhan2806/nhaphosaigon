@@ -139,7 +139,7 @@ export const getAccessToken = async (clientEmail: string, privateKey: string): P
 
         // Tạo JWT payload
         const now = Math.floor(Date.now() / 1000);
-        
+
         // Import private key
         const privateKeyObj = await importPKCS8(formattedPrivateKey, 'RS256');
 
@@ -151,12 +151,12 @@ export const getAccessToken = async (clientEmail: string, privateKey: string): P
             exp: now + 3600,
             iat: now,
         })
-        .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
-        .setIssuedAt()
-        .setExpirationTime('1h')
-        .setIssuer(clientEmail)
-        .setAudience('https://oauth2.googleapis.com/token')
-        .sign(privateKeyObj);
+            .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
+            .setIssuedAt()
+            .setExpirationTime('1h')
+            .setIssuer(clientEmail)
+            .setAudience('https://oauth2.googleapis.com/token')
+            .sign(privateKeyObj);
 
         // Lấy access token
         const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -178,7 +178,6 @@ export const getAccessToken = async (clientEmail: string, privateKey: string): P
         const data = await response.json();
         return data.access_token;
     } catch (error) {
-        console.error('Error getting access token:', error);
         throw error;
     }
 };
@@ -190,7 +189,7 @@ export const fetchFromGoogleSheetsWithServiceAccount = async (
     spreadsheetId: string,
     clientEmail: string,
     privateKey: string,
-    range: string = `${SHEET_NAME}!A2:AJ`
+    range: string = `${SHEET_NAME}!A2:AK`
 ): Promise<Property[]> => {
     try {
         const accessToken = await getAccessToken(clientEmail, privateKey);
@@ -210,9 +209,9 @@ export const fetchFromGoogleSheetsWithServiceAccount = async (
 
         const data = await response.json();
 
-        // Nếu không có dữ liệu, trả về mảng rỗng thay vì throw error
+        // Nếu không có dữ liệu, trả về mảng rỗng
         if (!data.values || data.values.length === 0) {
-            console.log("🔹 Không tìm thấy dữ liệu trong Google Sheets, trả về mảng rỗng");
+            console.log("🔹 Không tìm thấy dữ liệu trong Google Sheets");
             return [];
         }
 
@@ -272,7 +271,6 @@ export const updateGoogleSheetsWithServiceAccount = async (
 
         return true;
     } catch (error) {
-        console.error('Error updating Google Sheets:', error);
         throw error;
     }
 };
@@ -300,7 +298,6 @@ export const fetchFromGoogleSheets = async (
 
     // Nếu không có dữ liệu, trả về mảng rỗng thay vì throw error
     if (!data.values || data.values.length === 0) {
-        console.log("🔹 Không tìm thấy dữ liệu trong Google Sheets, trả về mảng rỗng");
         return [];
     }
 
@@ -345,7 +342,6 @@ export const appendToGoogleSheets = async (
 
         return true;
     } catch (error) {
-        console.error('Error appending to Google Sheets:', error);
         throw error;
     }
 };
@@ -390,7 +386,6 @@ export const updateGoogleSheetsRow = async (
 
         return true;
     } catch (error) {
-        console.error('Error updating row in Google Sheets:', error);
         throw error;
     }
 };
@@ -427,7 +422,6 @@ export const deleteFromGoogleSheets = async (
 
         return true;
     } catch (error) {
-        console.error('Error deleting row from Google Sheets:', error);
         throw error;
     }
 };

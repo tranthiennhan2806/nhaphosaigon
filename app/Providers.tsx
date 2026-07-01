@@ -63,14 +63,6 @@ const getConfigFromEnv = (): AppConfig => {
         config.isUsingMock = false;
     }
 
-    console.log('🔍 Providers - Config loaded from env:', {
-        spreadsheetId: config.spreadsheetId ? '✅ Có' : '❌ Không',
-        googleClientEmail: config.googleClientEmail ? '✅ Có' : '❌ Không',
-        hasPrivateKey: !!config.googlePrivateKey,
-        discordWebhookUrl: config.discordWebhookUrl ? '✅ Có' : '❌ Không',
-        isUsingMock: config.isUsingMock
-    });
-
     return config;
 };
 

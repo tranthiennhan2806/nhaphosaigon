@@ -18,15 +18,8 @@ export default function AdminPropertiesPage() {
         googlePrivateKey: process.env.NEXT_PUBLIC_GOOGLE_PRIVATE_KEY || "",
         discordWebhookUrl: process.env.NEXT_PUBLIC_DISCORD_WEBHOOK_URL || "",
         discordWebhookUrl2: process.env.NEXT_PUBLIC_DISCORD_WEBHOOK_URL_2 || "",
-        isUsingMock: false // Luôn là false vì không dùng mock
+        isUsingMock: false
     };
-
-    console.log('🔍 AdminPropertiesPage - Config:', {
-        spreadsheetId: config.spreadsheetId ? '✅ Có' : '❌ Không',
-        googleClientEmail: config.googleClientEmail ? '✅ Có' : '❌ Không',
-        hasPrivateKey: !!config.googlePrivateKey,
-        discordWebhookUrl: config.discordWebhookUrl ? '✅ Có' : '❌ Không'
-    });
 
     // Lấy tất cả functions từ hook
     const {
@@ -47,15 +40,15 @@ export default function AdminPropertiesPage() {
         setIsLoading(true);
         setError(null);
         try {
-            // Chỉ fetch từ Google Sheets, không dùng mock
             const data = await fetchProperties();
-            setProperties(data);
-            console.log(`✅ Loaded ${data.length} properties from Google Sheets`);
+            // Chỉ set dữ liệu thực từ Google Sheets, không dùng mock
+            setProperties(data || []);
+            console.log(`✅ Loaded ${data?.length || 0} properties from Google Sheets`);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Lỗi không xác định";
             setError(errorMessage);
             console.error('❌ Error loading properties:', error);
-            // Không set mock data, để properties là mảng rỗng
+            // Không set mock data, giữ properties là mảng rỗng
             setProperties([]);
         } finally {
             setIsLoading(false);

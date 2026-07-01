@@ -22,18 +22,14 @@ export default function AdminUsersPage() {
             createdAt: new Date().toISOString().split('T')[0],
         };
         setUsers([...users, user]);
-        // Trong thực tế, bạn sẽ gọi API để lưu user với password đã hash
-        console.log('New user:', { ...newUser, password: '***' });
     };
 
     const handleEditUser = (updatedUser: { id: string; email: string; name: string; role: 'admin' | 'editor' | 'viewer' }) => {
         setUsers(users.map(u => u.id === updatedUser.id ? { ...u, ...updatedUser } : u));
-        console.log('Updated user:', updatedUser);
     };
 
     const handleDeleteUser = (id: string) => {
         setUsers(users.filter(u => u.id !== id));
-        console.log('Deleted user:', id);
     };
 
     return (

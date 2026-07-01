@@ -155,7 +155,6 @@ export function AdminPropertyForm({
                 setUploadedImages(finalNormalImages);
                 setPendingNormalFiles([]);
             } catch (error) {
-                console.error('Upload error:', error);
                 alert('Lỗi upload ảnh thường. Vui lòng thử lại.');
                 setIsUploading(false);
                 return;
@@ -175,7 +174,6 @@ export function AdminPropertyForm({
                 setUploadedSensitiveImages(finalSensitiveImages);
                 setPendingSensitiveFiles([]);
             } catch (error) {
-                console.error('Upload error:', error);
                 alert('Lỗi upload ảnh nhạy cảm. Vui lòng thử lại.');
                 setIsUploading(false);
                 return;
@@ -187,9 +185,6 @@ export function AdminPropertyForm({
         // QUAN TRỌNG: Giữ nguyên ID nếu có initialData (đang edit)
         // KHÔNG tạo ID mới khi edit
         const propertyId = initialData?.id || `prop-${Date.now()}`;
-
-        console.log('🔑 Property ID:', propertyId);
-        console.log('📝 isEditing:', !!initialData?.id);
 
         const propertyData: Property = {
             id: propertyId, // Nếu có initialData.id thì giữ nguyên, nếu không thì tạo mới

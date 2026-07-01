@@ -138,7 +138,6 @@ export function AdminScreen({
       setUploadedImages(prev => [...prev, ...urls]);
       showToast(`Đã thêm thành công ${urls.length} hình ảnh vào hàng chờ!`);
     } catch (err) {
-      console.error(err);
       showToast("Lỗi tải ảnh lên. Đang gán ảnh mô phỏng thay thế.", "error");
       setUploadedImages(prev => [...prev, "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80"]);
     } finally {

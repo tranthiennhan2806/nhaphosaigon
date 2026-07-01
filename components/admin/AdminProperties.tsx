@@ -103,7 +103,6 @@ export function AdminProperties({
             setIsFormOpen(false);
             setEditingProperty(null);
         } catch (error) {
-            console.error('Error saving property:', error);
             alert('Lỗi khi lưu bất động sản. Vui lòng thử lại.');
         } finally {
             setIsSubmitting(false);

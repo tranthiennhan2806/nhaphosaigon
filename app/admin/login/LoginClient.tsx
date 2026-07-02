@@ -3,28 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Phone, Smartphone, Shield, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-
-// Mock users database
-const MOCK_USERS = [
-    {
-        id: '1',
-        phone: '0909941199',
-        name: 'Nhân',
-        role: 'admin'
-    },
-    {
-        id: '2',
-        phone: '0909876543',
-        name: 'Editor',
-        role: 'editor'
-    },
-    {
-        id: '3',
-        phone: '0918888999',
-        name: 'Viewer',
-        role: 'viewer'
-    }
-];
+import { MOCK_USERS } from '@/types/mock_user';
 
 export default function LoginClient() {
     const router = useRouter();

@@ -5,7 +5,8 @@ import {
     Bed, Bath, Building2, Ruler,
     Navigation, Car, Users,
     MapPin, Home, AlertCircle,
-    TrendingUp, Compass, FileCheck
+    TrendingUp, Compass, FileCheck,
+    GripVertical
 } from 'lucide-react';
 import {
     TARGET_DISTRICTS,
@@ -82,6 +83,10 @@ export function AdminPropertyForm({
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, type: '' });
 
+    // Drag state cho ảnh thường
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
     // Load initial data
     useEffect(() => {
         if (initialData) {
@@ -128,6 +133,49 @@ export function AdminPropertyForm({
             setUploadedSensitiveImages(newSensitiveImages);
             handleChange('sensitiveImages', newSensitiveImages);
         }
+    };
+
+    // ===== DRAG & DROP HANDLERS =====
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+        (e.target as HTMLElement).style.opacity = '0.5';
+    };
+
+    const handleDragEnd = (e: React.DragEvent) => {
+        setDraggedIndex(null);
+        setDragOverIndex(null);
+        (e.target as HTMLElement).style.opacity = '1';
+    };
+
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        setDragOverIndex(index);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        setDragOverIndex(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+        e.preventDefault();
+        
+        if (draggedIndex === null || draggedIndex === dropIndex) {
+            setDraggedIndex(null);
+            setDragOverIndex(null);
+            return;
+        }
+
+        // Sắp xếp lại mảng ảnh
+        const newImages = [...uploadedImages];
+        const [draggedItem] = newImages.splice(draggedIndex, 1);
+        newImages.splice(dropIndex, 0, draggedItem);
+        
+        setUploadedImages(newImages);
+        handleChange('images', newImages);
+        
+        setDraggedIndex(null);
+        setDragOverIndex(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -187,7 +235,7 @@ export function AdminPropertyForm({
         const propertyId = initialData?.id || `prop-${Date.now()}`;
 
         const propertyData: Property = {
-            id: propertyId, // Nếu có initialData.id thì giữ nguyên, nếu không thì tạo mới
+            id: propertyId,
             title: formData.title || '',
             description: formData.description || '',
             price: Number(formData.price) || 0,
@@ -248,6 +296,50 @@ export function AdminPropertyForm({
         ));
     };
 
+    // Render ảnh đã upload với drag handle
+    const renderUploadedImage = (url: string, idx: number) => {
+        const isDragging = draggedIndex === idx;
+        const isDragOver = dragOverIndex === idx;
+
+        return (
+            <div
+                key={idx}
+                draggable
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, idx)}
+                className={`relative w-20 h-20 border dark:border-neutral-800 overflow-hidden group cursor-move transition-all ${
+                    isDragging ? 'opacity-30 scale-95' : ''
+                } ${
+                    isDragOver ? 'ring-2 ring-blue-500 scale-105' : ''
+                }`}
+            >
+                <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                
+                {/* Drag handle */}
+                <div className="absolute top-1 left-1 bg-black/50 text-white p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="w-3 h-3" />
+                </div>
+                
+                {/* Xóa button */}
+                <button
+                    type="button"
+                    onClick={() => removeUploadedImage(idx, 'normal')}
+                    className="absolute top-1 right-1 bg-neutral-950/80 text-white p-1 hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100"
+                >
+                    <Trash2 className="w-3 h-3" />
+                </button>
+                
+                {/* Số thứ tự */}
+                <span className="absolute bottom-1 left-1 bg-black/50 text-white text-[8px] px-1 rounded">
+                    #{idx + 1}
+                </span>
+            </div>
+        );
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -265,8 +357,6 @@ export function AdminPropertyForm({
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    {/* ... Tất cả các phần form giữ nguyên ... */}
-
                     {/* Thông tin cơ bản */}
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase border-b border-neutral-200 dark:border-neutral-900 pb-2">
@@ -803,6 +893,11 @@ export function AdminPropertyForm({
                             <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
                                 Ảnh bất động sản
                             </label>
+                            {uploadedImages.length > 0 && (
+                                <p className="text-[8px] text-neutral-400 tracking-wider mt-0.5">
+                                    💡 Kéo thả để sắp xếp thứ tự ảnh
+                                </p>
+                            )}
                             <div className="flex items-center gap-3 flex-wrap mt-2">
                                 <label className="cursor-pointer border border-dashed border-neutral-400 dark:border-neutral-800 hover:border-neutral-950 dark:hover:border-white w-20 h-20 flex flex-col items-center justify-center gap-1.5 transition-all bg-neutral-50 dark:bg-neutral-900/50">
                                     <Upload className="w-4 h-4 text-neutral-500" />
@@ -819,19 +914,8 @@ export function AdminPropertyForm({
                                     />
                                 </label>
 
-                                {/* Ảnh đã upload */}
-                                {uploadedImages.map((url, idx) => (
-                                    <div key={`uploaded-${idx}`} className="relative w-20 h-20 border dark:border-neutral-800 overflow-hidden group">
-                                        <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
-                                        <button
-                                            type="button"
-                                            onClick={() => removeUploadedImage(idx, 'normal')}
-                                            className="absolute top-1 right-1 bg-neutral-950/80 text-white p-1 hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100"
-                                        >
-                                            <Trash2 className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                ))}
+                                {/* Ảnh đã upload với drag handle */}
+                                {uploadedImages.map((url, idx) => renderUploadedImage(url, idx))}
 
                                 {/* Ảnh chờ upload */}
                                 {renderPendingPreview(pendingNormalFiles, 'normal')}

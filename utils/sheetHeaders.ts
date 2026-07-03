@@ -95,6 +95,7 @@ export const ENUM_GUIDE = {
     alleyType: {
         '1_xe_may': '1 xe máy',
         '2_xe_may': '2 xe máy',
+        'ba_gac': 'ba gác',
         '1_xe_hoi': '1 xe hơi',
         '2_xe_hoi': '2 xe hơi',
         '1_xe_tai': '1 xe tải',

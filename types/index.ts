@@ -2,7 +2,7 @@
 export type HouseType = 'nha_cap_4' | 'dat' | 'nha_mat_tien' | 'nha_hem' | 'biet_thu' | 'chung_cu' | 'nha_pho' | 'khac';
 
 // Loại hẻm
-export type AlleyType = '1_xe_may' | '2_xe_may' | '1_xe_hoi' | '2_xe_hoi' | '1_xe_tai' | '2_xe_tai' | 'khac';
+export type AlleyType = '1_xe_may' | '2_xe_may' | 'ba_gac' | '1_xe_hoi' | '2_xe_hoi' | '1_xe_tai' | '2_xe_tai' | 'khac';
 
 // Loại lỗi phong thủy
 export type FengShuiIssue = 'top_hau' | 'duong_dam' | 'nga_ba' | 'nga_tu' | 'duong_cut' | 'gom_chan' | 'khac' | 'khong';

@@ -2,10 +2,11 @@ import { Property } from '@/types';
 
 export const TARGET_DISTRICTS: string[] = [
     "Quận 1",
-    "Quận 3",
-    "Phú Nhuận",
+    "Quận 4",
     "Quận 7",
-    "Nhà Bè"
+    "Quận 8",
+    "Nhà Bè",
+    "Phú Nhuận"
 ];
 
 // Constants cho các trường mới
@@ -23,6 +24,7 @@ export const HOUSE_TYPES = [
 export const ALLEY_TYPES = [
     { value: '1_xe_may', label: '1 xe máy' },
     { value: '2_xe_may', label: '2 xe máy' },
+    { value: 'ba_gac', label: 'ba gác' },
     { value: '1_xe_hoi', label: '1 xe hơi' },
     { value: '2_xe_hoi', label: '2 xe hơi' },
     { value: '1_xe_tai', label: '1 xe tải' },

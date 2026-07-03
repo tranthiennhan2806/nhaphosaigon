@@ -12,6 +12,25 @@ import {
 // Định nghĩa tên sheet
 const SHEET_1 = 'bds';
 
+// ✅ Hàm lấy URL ảnh vĩnh viễn từ Discord attachment
+const getPermanentDiscordImageUrl = (attachment: any): string => {
+    // URL gốc từ Discord: https://cdn.discordapp.com/attachments/{channelId}/{messageId}/{filename}
+    // Chuyển sang dạng vĩnh viễn: https://media.discordapp.net/attachments/{channelId}/{messageId}/{filename}
+    // Bỏ các tham số tạm thời (ex, hm, t)
+    let url = attachment.url || attachment.proxy_url || '';
+
+    // Nếu là URL của Discord, chuyển sang media.discordapp.net
+    if (url.includes('cdn.discordapp.com')) {
+        url = url.replace('cdn.discordapp.com', 'media.discordapp.net');
+    }
+
+    // Lấy phần URL cơ bản (bỏ query params)
+    const baseUrl = url.split('?')[0];
+
+    // Trả về URL cơ bản + tham số format=webp để tối ưu
+    return `${baseUrl}?format=webp`;
+};
+
 // Helper để chuyển đổi URL Discord sang media.discordapp.net
 const convertDiscordImageUrl = (url: string): string => {
     if (!url) return url;
@@ -45,7 +64,7 @@ export const useGoogleSheets = (config: AppConfig) => {
                     config.googlePrivateKey,
                     `${SHEET_1}!A1:AK`
                 );
-                return properties; // Trả về mảng rỗng nếu không có dữ liệu
+                return properties;
             }
 
             if (config.googleApiKey) {
@@ -54,14 +73,14 @@ export const useGoogleSheets = (config: AppConfig) => {
                     config.googleApiKey,
                     `${SHEET_1}!A2:AK`
                 );
-                return properties; // Trả về mảng rỗng nếu không có dữ liệu
+                return properties;
             }
 
             throw new Error("Không có phương thức xác thực");
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Lỗi không xác định khi fetch Google Sheets";
             setError(errorMessage);
-            throw err; // Throw lỗi để component xử lý
+            throw err;
         } finally {
             setIsLoading(false);
         }
@@ -78,7 +97,6 @@ export const useGoogleSheets = (config: AppConfig) => {
             }
 
             if (config.googleClientEmail && config.googlePrivateKey) {
-                // Đảm bảo ID là duy nhất
                 const newProperty = {
                     ...property,
                     id: property.id || `prop-${Date.now()}`
@@ -120,7 +138,6 @@ export const useGoogleSheets = (config: AppConfig) => {
             }
 
             if (config.googleClientEmail && config.googlePrivateKey) {
-                // Fetch current properties để tìm row index
                 const currentProperties = await fetchProperties();
                 const existingIndex = currentProperties.findIndex(p => p.id === property.id);
 
@@ -128,10 +145,9 @@ export const useGoogleSheets = (config: AppConfig) => {
                     throw new Error(`Property with ID ${property.id} not found`);
                 }
 
-                // Giữ nguyên ID khi update
                 const updateData = {
                     ...property,
-                    id: property.id // Giữ nguyên ID
+                    id: property.id
                 };
 
                 const success = await updateGoogleSheetsRow(
@@ -161,7 +177,6 @@ export const useGoogleSheets = (config: AppConfig) => {
     }, [config, fetchProperties]);
 
     // DELETE - Xóa property (xóa theo ID)
-    // DELETE - Xóa property (xóa theo ID)
     const deleteProperty = useCallback(async (id: string): Promise<boolean> => {
         setIsLoading(true);
         setError(null);
@@ -173,17 +188,13 @@ export const useGoogleSheets = (config: AppConfig) => {
 
             if (config.googleClientEmail && config.googlePrivateKey) {
                 const currentProperties = await fetchProperties();
-
-                // Nếu không tìm thấy property
                 const existingIndex = currentProperties.findIndex(p => p.id === id);
                 if (existingIndex === -1) {
                     throw new Error(`Property with ID ${id} not found`);
                 }
 
-                // Nếu chỉ có 1 property, xóa toàn bộ sheet
                 if (currentProperties.length === 1) {
                     console.log('🔹 Xóa property cuối cùng, xóa toàn bộ sheet...');
-                    // Clear toàn bộ sheet và để trống
                     await updateGoogleSheetsWithServiceAccount(
                         config.spreadsheetId,
                         config.googleClientEmail,
@@ -195,7 +206,6 @@ export const useGoogleSheets = (config: AppConfig) => {
                     return true;
                 }
 
-                // Xóa row theo index
                 const success = await deleteFromGoogleSheets(
                     config.spreadsheetId,
                     config.googleClientEmail,
@@ -258,7 +268,6 @@ export const useGoogleSheets = (config: AppConfig) => {
     // Upload 1 ảnh với retry và convert URL
     const uploadSingleImage = async (file: File, webhookUrl: string, retryCount: number = 0): Promise<string> => {
         try {
-            // Kiểm tra kích thước file
             if (file.size > 25 * 1024 * 1024) {
                 console.warn(`⚠️ File ${file.name} is too large (${file.size} bytes), using fallback`);
                 return URL.createObjectURL(file);
@@ -272,7 +281,6 @@ export const useGoogleSheets = (config: AppConfig) => {
                 body: formData
             });
 
-            // Xử lý rate limit
             if (response.status === 429) {
                 const errorData = await response.json();
                 const retryAfter = errorData.retry_after || 1;
@@ -286,7 +294,6 @@ export const useGoogleSheets = (config: AppConfig) => {
                 }
             }
 
-            // Xử lý lỗi webhook
             if (response.status === 404) {
                 throw new Error('Webhook not found. Please check your Discord webhook URL.');
             }
@@ -297,26 +304,31 @@ export const useGoogleSheets = (config: AppConfig) => {
             }
 
             const result = await response.json();
-            let imageUrl = result.attachments?.[0]?.url;
 
-            if (!imageUrl) {
+            // ✅ Lấy attachment từ response
+            const attachment = result.attachments?.[0];
+            if (!attachment) {
                 throw new Error('No image URL in Discord response');
             }
 
-            // ✅ QUAN TRỌNG: Chuyển đổi URL từ cdn.discordapp.com sang media.discordapp.net
-            // để đảm bảo ảnh hiển thị lâu dài hơn
-            imageUrl = convertDiscordImageUrl(imageUrl);
+            // ✅ QUAN TRỌNG: Lấy URL vĩnh viễn từ attachment
+            // Sử dụng proxy_url hoặc url và chuyển sang media.discordapp.net
+            let imageUrl = attachment.proxy_url || attachment.url;
 
-            // Thêm cache buster để refresh ảnh
-            const cacheBuster = `&t=${Date.now()}`;
-            if (imageUrl.includes('?')) {
-                imageUrl = imageUrl + cacheBuster;
-            } else {
-                imageUrl = imageUrl + '?' + cacheBuster.slice(1);
+            // Chuyển sang media.discordapp.net để có CDN tốt hơn
+            if (imageUrl.includes('cdn.discordapp.com')) {
+                imageUrl = imageUrl.replace('cdn.discordapp.com', 'media.discordapp.net');
             }
 
-            console.log('✅ Image URL converted to:', imageUrl);
-            return imageUrl;
+            // ✅ Lấy URL cơ bản (bỏ query params tạm thời)
+            const baseUrl = imageUrl.split('?')[0];
+
+            // ✅ Thêm format=webp để tối ưu, KHÔNG thêm timestamp
+            // Vì timestamp làm ảnh bị cache và có thể hết hạn
+            const permanentUrl = `${baseUrl}?format=webp`;
+
+            console.log('✅ Permanent image URL:', permanentUrl);
+            return permanentUrl;
         } catch (err) {
             console.error("❌ Lỗi upload ảnh lên Discord:", err);
             throw err;
@@ -334,13 +346,11 @@ export const useGoogleSheets = (config: AppConfig) => {
             webhookUrl = process.env.NEXT_PUBLIC_DISCORD_WEBHOOK_URL || "";
         }
 
-        // Nếu không có webhook, dùng URL tạm thời
         if (!webhookUrl) {
             console.warn("⚠️ Không có Discord Webhook URL, sử dụng fake URLs");
             return files.map(file => URL.createObjectURL(file));
         }
 
-        // Kiểm tra webhook có hoạt động không
         try {
             const testResponse = await fetch(webhookUrl, { method: 'HEAD' });
             if (!testResponse.ok) {
@@ -368,13 +378,11 @@ export const useGoogleSheets = (config: AppConfig) => {
                     onProgress(i + 1, total);
                 }
 
-                // Delay giữa các lần upload để tránh rate limit
                 if (i < total - 1) {
                     await new Promise(resolve => setTimeout(resolve, 1500));
                 }
             } catch (err) {
                 console.error(`❌ Failed to upload image ${i + 1}:`, err);
-                // Fallback: dùng URL tạm thời
                 urls.push(URL.createObjectURL(file));
                 if (onProgress) {
                     onProgress(i + 1, total);

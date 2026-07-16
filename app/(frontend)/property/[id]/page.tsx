@@ -16,6 +16,15 @@ export default function PropertyDetailPage({ params }: PageProps) {
     const { properties, isLoading: contextLoading, handleSyncData } = useContext(AppContext);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Lấy domain từ window.location hoặc dùng domain mặc định
+    const getBaseUrl = () => {
+        if (typeof window !== 'undefined') {
+            return window.location.origin;
+        }
+        // Fallback cho server-side
+        return process.env.NEXT_PUBLIC_BASE_URL || 'https://nhaphosaigon.vercel.app';
+    };
+
     // Load dữ liệu nếu chưa có
     useEffect(() => {
         const loadData = async () => {
@@ -24,7 +33,7 @@ export default function PropertyDetailPage({ params }: PageProps) {
             }
             setIsLoading(false);
         };
-        
+
         loadData();
     }, [properties, id, handleSyncData]);
 
@@ -56,30 +65,38 @@ export default function PropertyDetailPage({ params }: PageProps) {
 
     // Get meta data
     const getMetaData = () => {
+        const baseUrl = getBaseUrl();
+
         if (!property) {
             return {
                 title: 'Nhà Phố Sài Gòn - Bất động sản',
                 description: 'Tìm kiếm bất động sản tại Sài Gòn',
-                image: 'https://nhaphosaigon.com/og-image.jpg',
-                ogImageUrl: 'https://nhaphosaigon.com/api/og?title=Nhà%20Phố%20Sài%20Gòn',
-                url: 'https://nhaphosaigon.com/property/' + id,
+                image: `${baseUrl}/og-image.jpg`,
+                ogImageUrl: `${baseUrl}/api/og?title=Nhà%20Phố%20Sài%20Gòn`,
+                url: `${baseUrl}/property/${id}`,
             };
         }
 
-        const title = `${property.title} - ${formatPriceForMeta(property.price)} | Nhà Phố Sài Gòn`;
-        const description = `${property.title} tại ${property.address}. Diện tích ${property.area}m², ${property.bedrooms} phòng ngủ, ${property.bathrooms} toilet. Giá ${formatPriceForMeta(property.price)}.`;
-        
-        // Tạo OG Image URL động
-        const ogImageUrl = `https://nhaphosaigon.com/api/og?title=${encodeURIComponent(property.title)}&price=${encodeURIComponent(formatPriceForMeta(property.price))}&area=${property.area}`;
-        
-        // Fallback image nếu không có ảnh
-        const image = property.images && property.images.length > 0 
-            ? property.images[0] 
-            : 'https://nhaphosaigon.com/og-image.jpg';
-            
-        const url = `https://nhaphosaigon.com/property/${property.id}`;
+        // Lấy ảnh đầu tiên của property làm OG Image
+        const firstImage = property.images && property.images.length > 0
+            ? property.images[0]
+            : null;
 
-        return { title, description, image, ogImageUrl, url };
+        // Tạo tiêu đề ngắn gọn (giới hạn 60-70 ký tự)
+        const shortTitle = property.title.length > 60
+            ? property.title.substring(0, 57) + '...'
+            : property.title;
+
+        const title = `${shortTitle} - ${formatPriceForMeta(property.price)}`;
+        const description = `${property.title} tại ${property.address}. Diện tích ${property.area}m², ${property.bedrooms} PN, ${property.bathrooms} WC. Giá ${formatPriceForMeta(property.price)}.`;
+
+        // DÙNG ẢNH THẬT CỦA PROPERTY LÀM OG IMAGE
+        // Nếu có ảnh thật, dùng ảnh đó, không cần tạo dynamic
+        const ogImageUrl = firstImage || `${baseUrl}/api/og?title=${encodeURIComponent(property.title)}&price=${encodeURIComponent(formatPriceForMeta(property.price))}&area=${property.area}`;
+
+        const url = `${baseUrl}/property/${property.id}`;
+
+        return { title, description, image: ogImageUrl, ogImageUrl, url };
     };
 
     const meta = getMetaData();
@@ -90,6 +107,8 @@ export default function PropertyDetailPage({ params }: PageProps) {
             <>
                 <Head>
                     <title>Đang tải... | Nhà Phố Sài Gòn</title>
+                    <meta property="og:title" content="Đang tải..." />
+                    <meta property="og:image" content={meta.ogImageUrl} />
                 </Head>
                 <div className="flex items-center justify-center min-h-[60vh]">
                     <div className="text-center">
@@ -122,13 +141,13 @@ export default function PropertyDetailPage({ params }: PageProps) {
         );
     }
 
-    // Schema.org structured data for real estate
+    // Schema.org structured data
     const structuredData = {
         "@context": "https://schema.org",
         "@type": "RealEstateListing",
         "name": property.title,
         "description": property.description,
-        "url": `https://nhaphosaigon.com/property/${property.id}`,
+        "url": meta.url,
         "image": property.images && property.images.length > 0 ? property.images[0] : undefined,
         "price": property.price,
         "priceCurrency": "VND",
@@ -144,57 +163,42 @@ export default function PropertyDetailPage({ params }: PageProps) {
         },
         "numberOfRooms": property.bedrooms,
         "numberOfBathroomsTotal": property.bathrooms,
-        "amenityFeature": [
-            ...(property.hasConstructionApproval ? [{
-                "@type": "LocationFeatureSpecification",
-                "name": "Đã hoàn công",
-                "value": true
-            }] : []),
-            ...(property.hasBuildingPermit ? [{
-                "@type": "LocationFeatureSpecification",
-                "name": "Có giấy phép xây dựng",
-                "value": true
-            }] : [])
-        ]
     };
 
     return (
         <>
-            {/* Meta Tags for SEO */}
+            {/* Meta Tags for SEO - ĐẶT Ở ĐẦU TRANG */}
             <Head>
-                {/* Primary Meta Tags */}
+                {/* Title - Quan trọng nhất */}
                 <title>{meta.title}</title>
                 <meta name="title" content={meta.title} />
                 <meta name="description" content={meta.description} />
-                
-                {/* Open Graph / Facebook */}
+
+                {/* Open Graph / Facebook - BẮT BUỘC CHO ZALO/FACEBOOK */}
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content={meta.url} />
                 <meta property="og:title" content={meta.title} />
                 <meta property="og:description" content={meta.description} />
-                
-                {/* SỬ DỤNG OG IMAGE URL ĐỘNG */}
                 <meta property="og:image" content={meta.ogImageUrl} />
                 <meta property="og:image:width" content="1200" />
                 <meta property="og:image:height" content="630" />
                 <meta property="og:image:alt" content={property.title} />
                 <meta property="og:site_name" content="Nhà Phố Sài Gòn" />
-                
-                {/* Twitter */}
+                <meta property="og:locale" content="vi_VN" />
+
+                {/* Twitter Card */}
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:url" content={meta.url} />
                 <meta name="twitter:title" content={meta.title} />
                 <meta name="twitter:description" content={meta.description} />
-                
-                {/* SỬ DỤNG TWITTER IMAGE ĐỘNG */}
                 <meta name="twitter:image" content={meta.ogImageUrl} />
                 <meta name="twitter:image:alt" content={property.title} />
-                
+
                 {/* Additional SEO */}
                 <meta name="robots" content="index, follow" />
                 <meta name="keywords" content={`bất động sản, nhà đất, ${property.district}, ${property.title}, bán nhà, mua nhà, ${property.houseType}`} />
                 <link rel="canonical" href={meta.url} />
-                
+
                 {/* Structured Data */}
                 <script
                     type="application/ld+json"

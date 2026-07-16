@@ -260,7 +260,7 @@ export function AdminProperties({
                             setEditingProperty(null);
                         }}
                         isLoading={isSubmitting}
-                        uploadMultipleImages={uploadMultipleImages}
+                        // uploadMultipleImages={uploadMultipleImages}
                     />
                 )}
             </div>

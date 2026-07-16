@@ -148,12 +148,6 @@ export function PropertyCard({
                                 <TrendingUp className="w-3.5 h-3.5" />
                                 {property.saleStatus === 'da_ban' ? 'Đã bán' : 'Đang bán'}
                             </span>
-                            {property.direction && property.direction !== 'khong_xac_dinh' && (
-                                <span className="flex items-center gap-1">
-                                    <Navigation className="w-3.5 h-3.5" />
-                                    {property.direction}
-                                </span>
-                            )}
                         </div>
                         <span className="font-bold text-neutral-900 dark:text-white group-hover:underline text-xs flex items-center">
                             CHI TIẾT →

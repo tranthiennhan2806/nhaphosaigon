@@ -329,11 +329,15 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
                                     {property.title}
                                 </h1>
 
-                                <div className="flex items-center gap-1.5 text-neutral-400 text-xs uppercase tracking-wider">
-                                    <MapPin className="w-3.5 h-3.5 text-neutral-500" />
-                                    <span>{property.address}</span>
-                                </div>
+                                {/* Địa chỉ - CHỈ ADMIN */}
+                                {isAdmin && (
+                                    <div className="flex items-center gap-1.5 text-neutral-400 text-xs uppercase tracking-wider">
+                                        <MapPin className="w-3.5 h-3.5 text-neutral-500" />
+                                        <span>{property.address}</span>
+                                    </div>
+                                )}
 
+                                {/* Thông tin loại nhà - LUÔN HIỂN THỊ */}
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     <Home className="w-3.5 h-3.5 text-neutral-400" />
                                     <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
@@ -349,7 +353,8 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
                                             • Tầng {property.floorNumber}
                                         </span>
                                     )}
-                                    {property.direction && property.direction !== 'khong_xac_dinh' && (
+                                    {/* Hướng nhà - CHỈ ADMIN */}
+                                    {isAdmin && property.direction && property.direction !== 'khong_xac_dinh' && (
                                         <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                                             • Hướng {getDirectionLabel(property.direction)}
                                         </span>
@@ -379,7 +384,7 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
                             </div>
                         </div>
 
-                        {/* DETAILS - phần này giữ nguyên như cũ */}
+                        {/* DETAILS */}
                         <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 p-6 space-y-6">
                             <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-900 pb-3">
                                 <h3 className="font-semibold text-xs tracking-widest uppercase dark:text-white">
@@ -409,16 +414,13 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
                                         <span className="font-semibold dark:text-white">{property.bathrooms} PHÒNG</span>
                                     </div>
                                 </div>
-                                {/* Số tầng - CHỈ ADMIN */}
-                                {isAdmin && (
-                                    <div className="flex items-center gap-2">
-                                        <Building2 className="w-4 h-4 text-neutral-400" />
-                                        <div>
-                                            <span className="text-[9px] text-neutral-400 block">SỐ TẦNG</span>
-                                            <span className="font-semibold dark:text-white">{property.floors} TẦNG</span>
-                                        </div>
+                                <div className="flex items-center gap-2">
+                                    <Building2 className="w-4 h-4 text-neutral-400" />
+                                    <div>
+                                        <span className="text-[9px] text-neutral-400 block">SỐ TẦNG</span>
+                                        <span className="font-semibold dark:text-white">{property.floors} TẦNG</span>
                                     </div>
-                                )}
+                                </div>
                                 {/* Mã số - CHỈ ADMIN */}
                                 {isAdmin && (
                                     <div className="flex items-center gap-2">

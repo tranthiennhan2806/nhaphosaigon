@@ -95,10 +95,6 @@ export function PropertyCard({
                             <h4 className="font-semibold text-sm text-neutral-900 dark:text-white line-clamp-1 uppercase tracking-wider group-hover:text-neutral-950 dark:group-hover:text-white transition-colors">
                                 {property.title}
                             </h4>
-                            <div className="flex items-center gap-1 text-neutral-400 text-xs uppercase tracking-wider truncate mt-1">
-                                <MapPin className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-                                <span>{property.address}</span>
-                            </div>
                         </div>
 
                         {/* Extended info for list view */}
@@ -140,11 +136,6 @@ export function PropertyCard({
                             {property.hasCashFlow && (
                                 <span className="text-[9px] bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 px-2 py-0.5 uppercase tracking-wider">
                                     💰 Có dòng tiền
-                                </span>
-                            )}
-                            {property.isHardToAccess && (
-                                <span className="text-[9px] bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 px-2 py-0.5 uppercase tracking-wider">
-                                    🚗 Khó đi
                                 </span>
                             )}
                         </div>

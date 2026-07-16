@@ -223,10 +223,7 @@ export function PropertyCard({
                         {property.title}
                     </h4>
 
-                    <div className="flex items-center gap-1 text-neutral-400 text-[10px] uppercase tracking-wider truncate">
-                        <MapPin className="w-3 h-3 text-neutral-400 flex-shrink-0" />
-                        <span>{property.address}</span>
-                    </div>
+              
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-neutral-100 dark:border-neutral-900 text-[9px] text-neutral-400 uppercase tracking-widest">

@@ -55,6 +55,7 @@ export const NEIGHBOR_TYPES = [
 export const ALLEY_END_TYPES = [
     { value: 'cut', label: 'Hẻm cụt' },
     { value: 'thong', label: 'Hẻm thông' },
+    { value: 'mat_tien', label: 'mặt tiền' },
     { value: 'khong_xac_dinh', label: 'Không xác định' }
 ];
 

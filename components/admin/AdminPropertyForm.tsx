@@ -6,7 +6,7 @@ import {
     Navigation, Car, Users,
     MapPin, Home, AlertCircle,
     TrendingUp, Compass, FileCheck,
-    GripVertical
+    GripVertical, Plus
 } from 'lucide-react';
 import {
     TARGET_DISTRICTS,
@@ -24,7 +24,6 @@ interface AdminPropertyFormProps {
     onSubmit: (data: Property) => void;
     onCancel: () => void;
     isLoading?: boolean;
-    uploadMultipleImages?: (files: File[], onProgress?: (current: number, total: number) => void) => Promise<string[]>;
 }
 
 export function AdminPropertyForm({
@@ -32,7 +31,6 @@ export function AdminPropertyForm({
     onSubmit,
     onCancel,
     isLoading = false,
-    uploadMultipleImages
 }: AdminPropertyFormProps) {
     const isEditing = !!initialData?.id;
 
@@ -76,12 +74,18 @@ export function AdminPropertyForm({
         projectName: ''
     });
 
-    const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-    const [uploadedSensitiveImages, setUploadedSensitiveImages] = useState<string[]>([]);
-    const [pendingNormalFiles, setPendingNormalFiles] = useState<File[]>([]);
-    const [pendingSensitiveFiles, setPendingSensitiveFiles] = useState<File[]>([]);
-    const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, type: '' });
+    // State cho danh sách URL ảnh thường
+    const [imageUrls, setImageUrls] = useState<string[]>([]);
+    // State cho input URL đang nhập - mỗi input có id riêng
+    const [urlInputs, setUrlInputs] = useState<{ id: string; value: string }[]>([
+        { id: 'img-0', value: '' }
+    ]);
+
+    // State cho danh sách URL ảnh nhạy cảm
+    const [sensitiveImageUrls, setSensitiveImageUrls] = useState<string[]>([]);
+    const [sensitiveUrlInputs, setSensitiveUrlInputs] = useState<{ id: string; value: string }[]>([
+        { id: 'sensitive-0', value: '' }
+    ]);
 
     // Drag state cho ảnh thường
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -91,8 +95,25 @@ export function AdminPropertyForm({
     useEffect(() => {
         if (initialData) {
             setFormData(initialData);
-            setUploadedImages(initialData.images || []);
-            setUploadedSensitiveImages(initialData.sensitiveImages || []);
+            setImageUrls(initialData.images || []);
+            setSensitiveImageUrls(initialData.sensitiveImages || []);
+
+            // Nếu có ảnh thì tạo input tương ứng, nếu không thì giữ 1 input rỗng
+            const imageCount = (initialData.images || []).length;
+            if (imageCount > 0) {
+                setUrlInputs(Array.from({ length: imageCount }, (_, i) => ({
+                    id: `img-${i}`,
+                    value: initialData.images?.[i] || ''
+                })));
+            }
+
+            const sensitiveCount = (initialData.sensitiveImages || []).length;
+            if (sensitiveCount > 0) {
+                setSensitiveUrlInputs(Array.from({ length: sensitiveCount }, (_, i) => ({
+                    id: `sensitive-${i}`,
+                    value: initialData.sensitiveImages?.[i] || ''
+                })));
+            }
         }
     }, [initialData]);
 
@@ -100,38 +121,105 @@ export function AdminPropertyForm({
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    // Chọn ảnh nhưng chưa upload
-    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'normal' | 'sensitive') => {
-        const files = Array.from(e.target.files || []);
-        if (files.length === 0) return;
-
-        if (type === 'normal') {
-            setPendingNormalFiles(prev => [...prev, ...files]);
-        } else {
-            setPendingSensitiveFiles(prev => [...prev, ...files]);
-        }
-        e.target.value = '';
+    // Thêm input URL ảnh mới
+    const addImageInput = () => {
+        const newId = `img-${Date.now()}`;
+        setUrlInputs(prev => [...prev, { id: newId, value: '' }]);
     };
 
-    // Xóa ảnh đã chọn nhưng chưa upload
-    const removePendingImage = (index: number, type: 'normal' | 'sensitive') => {
-        if (type === 'normal') {
-            setPendingNormalFiles(prev => prev.filter((_, i) => i !== index));
-        } else {
-            setPendingSensitiveFiles(prev => prev.filter((_, i) => i !== index));
-        }
+    // Thêm input URL ảnh nhạy cảm mới
+    const addSensitiveImageInput = () => {
+        const newId = `sensitive-${Date.now()}`;
+        setSensitiveUrlInputs(prev => [...prev, { id: newId, value: '' }]);
     };
 
-    // Xóa ảnh đã upload
-    const removeUploadedImage = (index: number, type: 'normal' | 'sensitive') => {
+    // Cập nhật giá trị input URL
+    const updateUrlInput = (id: string, value: string) => {
+        setUrlInputs(prev => prev.map(item =>
+            item.id === id ? { ...item, value } : item
+        ));
+    };
+
+    // Cập nhật giá trị input URL nhạy cảm
+    const updateSensitiveUrlInput = (id: string, value: string) => {
+        setSensitiveUrlInputs(prev => prev.map(item =>
+            item.id === id ? { ...item, value } : item
+        ));
+    };
+
+    // Xóa input URL ảnh thường
+    const removeUrlInput = (id: string) => {
+        if (urlInputs.length <= 1) {
+            alert('Phải có ít nhất 1 ô nhập URL');
+            return;
+        }
+        setUrlInputs(prev => prev.filter(item => item.id !== id));
+        // Cập nhật lại imageUrls
+        const remainingUrls = urlInputs
+            .filter(item => item.id !== id)
+            .map(item => item.value)
+            .filter(value => value.trim() !== '');
+        setImageUrls(remainingUrls);
+        handleChange('images', remainingUrls);
+    };
+
+    // Xóa input URL ảnh nhạy cảm
+    const removeSensitiveUrlInput = (id: string) => {
+        if (sensitiveUrlInputs.length <= 1) {
+            alert('Phải có ít nhất 1 ô nhập URL');
+            return;
+        }
+        setSensitiveUrlInputs(prev => prev.filter(item => item.id !== id));
+        const remainingUrls = sensitiveUrlInputs
+            .filter(item => item.id !== id)
+            .map(item => item.value)
+            .filter(value => value.trim() !== '');
+        setSensitiveImageUrls(remainingUrls);
+        handleChange('sensitiveImages', remainingUrls);
+    };
+
+    // Xóa URL ảnh đã lưu (khi xóa input)
+    const removeImageUrl = (index: number) => {
+        const newImages = imageUrls.filter((_, i) => i !== index);
+        setImageUrls(newImages);
+        handleChange('images', newImages);
+        // Cập nhật lại inputs
+        const newInputs = urlInputs.filter((_, i) => i !== index);
+        setUrlInputs(newInputs);
+    };
+
+    // Xóa URL ảnh nhạy cảm đã lưu
+    const removeSensitiveImageUrl = (index: number) => {
+        const newSensitiveImages = sensitiveImageUrls.filter((_, i) => i !== index);
+        setSensitiveImageUrls(newSensitiveImages);
+        handleChange('sensitiveImages', newSensitiveImages);
+        const newInputs = sensitiveUrlInputs.filter((_, i) => i !== index);
+        setSensitiveUrlInputs(newInputs);
+    };
+
+    // Lưu tất cả URL từ inputs vào state
+    const saveImageUrls = () => {
+        const urls = urlInputs
+            .map(item => item.value.trim())
+            .filter(value => value !== '');
+        setImageUrls(urls);
+        handleChange('images', urls);
+    };
+
+    const saveSensitiveImageUrls = () => {
+        const urls = sensitiveUrlInputs
+            .map(item => item.value.trim())
+            .filter(value => value !== '');
+        setSensitiveImageUrls(urls);
+        handleChange('sensitiveImages', urls);
+    };
+
+    // Khi blur input, tự động lưu URL
+    const handleUrlBlur = (type: 'normal' | 'sensitive') => {
         if (type === 'normal') {
-            const newImages = uploadedImages.filter((_, i) => i !== index);
-            setUploadedImages(newImages);
-            handleChange('images', newImages);
+            saveImageUrls();
         } else {
-            const newSensitiveImages = uploadedSensitiveImages.filter((_, i) => i !== index);
-            setUploadedSensitiveImages(newSensitiveImages);
-            handleChange('sensitiveImages', newSensitiveImages);
+            saveSensitiveImageUrls();
         }
     };
 
@@ -159,79 +247,83 @@ export function AdminPropertyForm({
 
     const handleDrop = (e: React.DragEvent, dropIndex: number) => {
         e.preventDefault();
-        
+
         if (draggedIndex === null || draggedIndex === dropIndex) {
             setDraggedIndex(null);
             setDragOverIndex(null);
             return;
         }
 
-        // Sắp xếp lại mảng ảnh
-        const newImages = [...uploadedImages];
+        const newImages = [...imageUrls];
         const [draggedItem] = newImages.splice(draggedIndex, 1);
         newImages.splice(dropIndex, 0, draggedItem);
-        
-        setUploadedImages(newImages);
+
+        setImageUrls(newImages);
         handleChange('images', newImages);
-        
+
+        // Sắp xếp lại inputs theo thứ tự mới
+        const newInputs = [...urlInputs];
+        const [draggedInput] = newInputs.splice(draggedIndex, 1);
+        newInputs.splice(dropIndex, 0, draggedInput);
+        setUrlInputs(newInputs);
+
         setDraggedIndex(null);
         setDragOverIndex(null);
     };
 
+    // Hàm format giá tiền Việt Nam
+    const formatPrice = (value: number): string => {
+        if (!value || value === 0) return '0 ₫';
+
+        // Định dạng theo kiểu Việt Nam: 1.000.000 ₫
+        const formatted = new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(value);
+
+        return formatted;
+    };
+
+    // Hàm format giá dạng rút gọn (tỷ, triệu)
+    const formatPriceShort = (value: number): string => {
+        if (!value || value === 0) return '0 ₫';
+
+        const billion = 1000000000;
+        const million = 1000000;
+        const thousand = 1000;
+
+        if (value >= billion) {
+            const result = value / billion;
+            return `${result.toFixed(1).replace(/\.0$/, '')} tỷ`;
+        }
+
+        if (value >= million) {
+            const result = value / million;
+            return `${result.toFixed(1).replace(/\.0$/, '')} triệu`;
+        }
+
+        if (value >= thousand) {
+            const result = value / thousand;
+            return `${result.toFixed(0).replace(/\.0$/, '')} nghìn`;
+        }
+
+        return `${value} ₫`;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Lưu URL từ inputs trước khi submit
+        saveImageUrls();
+        saveSensitiveImageUrls();
 
         if (!formData.title || !formData.price || !formData.area || !formData.address) {
             alert('Vui lòng điền đầy đủ các trường bắt buộc: Tiêu đề, Giá, Diện tích, Địa chỉ');
             return;
         }
 
-        // Gom tất cả URL ảnh
-        let finalNormalImages = [...uploadedImages];
-        let finalSensitiveImages = [...uploadedSensitiveImages];
-
-        // Upload ảnh thường nếu có
-        if (pendingNormalFiles.length > 0 && uploadMultipleImages) {
-            setIsUploading(true);
-            setUploadProgress({ current: 0, total: pendingNormalFiles.length, type: 'normal' });
-
-            try {
-                const urls = await uploadMultipleImages(pendingNormalFiles, (current, total) => {
-                    setUploadProgress({ current, total, type: 'normal' });
-                });
-                finalNormalImages = [...finalNormalImages, ...urls];
-                setUploadedImages(finalNormalImages);
-                setPendingNormalFiles([]);
-            } catch (error) {
-                alert('Lỗi upload ảnh thường. Vui lòng thử lại.');
-                setIsUploading(false);
-                return;
-            }
-        }
-
-        // Upload ảnh nhạy cảm nếu có
-        if (pendingSensitiveFiles.length > 0 && uploadMultipleImages) {
-            setIsUploading(true);
-            setUploadProgress({ current: 0, total: pendingSensitiveFiles.length, type: 'sensitive' });
-
-            try {
-                const urls = await uploadMultipleImages(pendingSensitiveFiles, (current, total) => {
-                    setUploadProgress({ current, total, type: 'sensitive' });
-                });
-                finalSensitiveImages = [...finalSensitiveImages, ...urls];
-                setUploadedSensitiveImages(finalSensitiveImages);
-                setPendingSensitiveFiles([]);
-            } catch (error) {
-                alert('Lỗi upload ảnh nhạy cảm. Vui lòng thử lại.');
-                setIsUploading(false);
-                return;
-            }
-        }
-
-        setIsUploading(false);
-
-        // QUAN TRỌNG: Giữ nguyên ID nếu có initialData (đang edit)
-        // KHÔNG tạo ID mới khi edit
         const propertyId = initialData?.id || `prop-${Date.now()}`;
 
         const propertyData: Property = {
@@ -245,7 +337,7 @@ export function AdminPropertyForm({
             type: 'sale',
             bedrooms: Number(formData.bedrooms) || 2,
             bathrooms: Number(formData.bathrooms) || 2,
-            images: finalNormalImages.length > 0 ? finalNormalImages : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'],
+            images: imageUrls.length > 0 ? imageUrls : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'],
             contactName: formData.contactName || 'Chính chủ',
             contactPhone: formData.contactPhone || '',
             hasPlanningIssue: formData.hasPlanningIssue || false,
@@ -269,75 +361,13 @@ export function AdminPropertyForm({
             floorNumber: Number(formData.floorNumber) || 0,
             direction: formData.direction || 'khong_xac_dinh',
             isInExistingResidentialArea: formData.isInExistingResidentialArea || false,
-            sensitiveImages: finalSensitiveImages,
+            sensitiveImages: sensitiveImageUrls,
             hasBuildingPermit: formData.hasBuildingPermit || false,
             notes: formData.notes || '',
             projectName: formData.projectName || ''
         };
 
-        // Gửi lên component cha
         onSubmit(propertyData);
-    };
-
-    // Render preview cho file pending
-    const renderPendingPreview = (files: File[], type: 'normal' | 'sensitive') => {
-        return files.map((file, idx) => (
-            <div key={idx} className="relative w-20 h-20 border dark:border-neutral-800 overflow-hidden group">
-                <img src={URL.createObjectURL(file)} alt={`Pending ${idx + 1}`} className="w-full h-full object-cover" />
-                <button
-                    type="button"
-                    onClick={() => removePendingImage(idx, type)}
-                    className="absolute top-1 right-1 bg-rose-600 text-white p-1 hover:bg-rose-700 transition-colors"
-                >
-                    <Trash2 className="w-3 h-3" />
-                </button>
-                <span className="absolute bottom-1 left-1 bg-yellow-500/80 text-white text-[8px] px-1">Chờ upload</span>
-            </div>
-        ));
-    };
-
-    // Render ảnh đã upload với drag handle
-    const renderUploadedImage = (url: string, idx: number) => {
-        const isDragging = draggedIndex === idx;
-        const isDragOver = dragOverIndex === idx;
-
-        return (
-            <div
-                key={idx}
-                draggable
-                onDragStart={(e) => handleDragStart(e, idx)}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, idx)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, idx)}
-                className={`relative w-20 h-20 border dark:border-neutral-800 overflow-hidden group cursor-move transition-all ${
-                    isDragging ? 'opacity-30 scale-95' : ''
-                } ${
-                    isDragOver ? 'ring-2 ring-blue-500 scale-105' : ''
-                }`}
-            >
-                <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
-                
-                {/* Drag handle */}
-                <div className="absolute top-1 left-1 bg-black/50 text-white p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                    <GripVertical className="w-3 h-3" />
-                </div>
-                
-                {/* Xóa button */}
-                <button
-                    type="button"
-                    onClick={() => removeUploadedImage(idx, 'normal')}
-                    className="absolute top-1 right-1 bg-neutral-950/80 text-white p-1 hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100"
-                >
-                    <Trash2 className="w-3 h-3" />
-                </button>
-                
-                {/* Số thứ tự */}
-                <span className="absolute bottom-1 left-1 bg-black/50 text-white text-[8px] px-1 rounded">
-                    #{idx + 1}
-                </span>
-            </div>
-        );
     };
 
     return (
@@ -357,6 +387,8 @@ export function AdminPropertyForm({
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* Các phần khác giữ nguyên... */}
+
                     {/* Thông tin cơ bản */}
                     <div className="space-y-4">
                         <h4 className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase border-b border-neutral-200 dark:border-neutral-900 pb-2">
@@ -400,9 +432,48 @@ export function AdminPropertyForm({
                                     required
                                     placeholder="0"
                                     value={formData.price || ''}
-                                    onChange={(e) => handleChange('price', Number(e.target.value))}
+                                    onChange={(e) => {
+                                        const value = Number(e.target.value);
+                                        handleChange('price', value);
+                                    }}
                                     className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-3 text-xs focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white"
                                 />
+
+                                {/* Hiển thị định dạng giá */}
+                                {formData.price && formData.price > 0 && (
+                                    <div className="mt-1 space-y-0.5">
+                                        <div className="flex items-center gap-2 text-[10px]">
+                                            <span className="text-neutral-400 tracking-wider">📊 Định dạng:</span>
+                                            <span className="font-mono font-semibold text-neutral-700 dark:text-neutral-300">
+                                                {formatPrice(formData.price)}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-[10px]">
+                                            <span className="text-neutral-400 tracking-wider">📌 Rút gọn:</span>
+                                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                                {formatPriceShort(formData.price)}
+                                            </span>
+                                        </div>
+                                        {/* Hiển thị thêm các đơn vị khác để tham khảo */}
+                                        <div className="flex items-center gap-3 text-[9px] text-neutral-400 flex-wrap">
+                                            <span>💡 {formatPriceShort(formData.price)}</span>
+                                            {formData.price >= 1000000 && (
+                                                <span>• {(formData.price / 1000000).toFixed(1)} triệu</span>
+                                            )}
+                                            {formData.price >= 1000000000 && (
+                                                <span>• {(formData.price / 1000000000).toFixed(2)} tỷ</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Gợi ý cách nhập nếu giá quá lớn */}
+                                {formData.price && formData.price > 999999999 && (
+                                    <div className="mt-1 text-[9px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                        <AlertCircle className="w-3 h-3" />
+                                        <span>Bạn đang nhập giá hàng tỷ đồng</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-1">
@@ -890,131 +961,180 @@ export function AdminPropertyForm({
 
                         {/* Ảnh thường */}
                         <div>
-                            <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
-                                Ảnh bất động sản
-                            </label>
-                            {uploadedImages.length > 0 && (
+                            <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
+                                    Ảnh bất động sản
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={addImageInput}
+                                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Thêm URL
+                                </button>
+                            </div>
+
+                            {imageUrls.length > 0 && (
                                 <p className="text-[8px] text-neutral-400 tracking-wider mt-0.5">
                                     💡 Kéo thả để sắp xếp thứ tự ảnh
                                 </p>
                             )}
-                            <div className="flex items-center gap-3 flex-wrap mt-2">
-                                <label className="cursor-pointer border border-dashed border-neutral-400 dark:border-neutral-800 hover:border-neutral-950 dark:hover:border-white w-20 h-20 flex flex-col items-center justify-center gap-1.5 transition-all bg-neutral-50 dark:bg-neutral-900/50">
-                                    <Upload className="w-4 h-4 text-neutral-500" />
-                                    <span className="text-[9px] font-bold tracking-wider text-neutral-500 uppercase text-center leading-tight">
-                                        Chọn ảnh
-                                    </span>
-                                    <input
-                                        type="file"
-                                        multiple
-                                        accept="image/*"
-                                        onChange={(e) => handleImageSelect(e, 'normal')}
-                                        className="hidden"
-                                        disabled={isUploading}
-                                    />
-                                </label>
 
-                                {/* Ảnh đã upload với drag handle */}
-                                {uploadedImages.map((url, idx) => renderUploadedImage(url, idx))}
-
-                                {/* Ảnh chờ upload */}
-                                {renderPendingPreview(pendingNormalFiles, 'normal')}
+                            {/* Danh sách các input URL */}
+                            <div className="space-y-2 mt-2">
+                                {urlInputs.map((input, index) => (
+                                    <div key={input.id} className="flex items-center gap-2">
+                                        <div className="flex-1 relative">
+                                            <input
+                                                type="text"
+                                                placeholder={`URL ảnh #${index + 1}`}
+                                                value={input.value}
+                                                onChange={(e) => updateUrlInput(input.id, e.target.value)}
+                                                onBlur={() => handleUrlBlur('normal')}
+                                                className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white"
+                                            />
+                                            {/* Preview ảnh khi có URL */}
+                                            {input.value.trim() && (
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+                                                    <img
+                                                        src={input.value.trim()}
+                                                        alt="Preview"
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" fill="%23f3f4f6"/><text x="16" y="18" font-size="10" text-anchor="middle" fill="%239ca3af">❌</text></svg>';
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeUrlInput(input.id)}
+                                            className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 transition-colors"
+                                            title="Xóa URL này"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
 
-                            {pendingNormalFiles.length > 0 && (
-                                <p className="text-[9px] text-yellow-500 mt-1 tracking-wider">
-                                    ⏳ {pendingNormalFiles.length} ảnh đang chờ upload khi bấm "Thêm mới"
-                                </p>
+                            {/* Hiển thị ảnh đã lưu dạng thumbnail */}
+                            {imageUrls.length > 0 && (
+                                <div className="flex items-center gap-2 flex-wrap mt-3 border-t border-neutral-100 dark:border-neutral-900 pt-3">
+                                    <span className="text-[8px] text-neutral-400 tracking-wider">📷 Đã lưu:</span>
+                                    {imageUrls.map((url, idx) => (
+                                        <div key={idx} className="relative w-12 h-12 border dark:border-neutral-800 overflow-hidden group">
+                                            <img src={url} alt={`Image ${idx + 1}`} className="w-full h-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeImageUrl(idx)}
+                                                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                            >
+                                                <Trash2 className="w-3 h-3 text-white" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
-                            <p className="text-[9px] text-neutral-400 mt-1 tracking-wider">
-                                💡 Chọn ảnh trước, sau đó bấm "Thêm mới" để upload lên Discord CDN
+
+                            <p className="text-[9px] text-neutral-400 mt-2 tracking-wider">
+                                💡 Nhập URL ảnh, ảnh sẽ preview ngay bên phải ô nhập
                             </p>
                         </div>
 
                         {/* Ảnh nhạy cảm */}
                         <div className="pt-2 border-t border-neutral-100 dark:border-neutral-900">
-                            <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
-                                <FileCheck className="w-3 h-3" />
-                                Hình nhạy cảm (sổ, mặt tiền có bảng địa chỉ)
-                            </label>
-                            <div className="flex items-center gap-3 flex-wrap mt-2">
-                                <label className="cursor-pointer border border-dashed border-neutral-400 dark:border-neutral-800 hover:border-neutral-950 dark:hover:border-white w-20 h-20 flex flex-col items-center justify-center gap-1.5 transition-all bg-neutral-50 dark:bg-neutral-900/50">
-                                    <Upload className="w-4 h-4 text-neutral-500" />
-                                    <span className="text-[9px] font-bold tracking-wider text-neutral-500 uppercase text-center leading-tight">
-                                        Chọn ảnh
-                                    </span>
-                                    <input
-                                        type="file"
-                                        multiple
-                                        accept="image/*"
-                                        onChange={(e) => handleImageSelect(e, 'sensitive')}
-                                        className="hidden"
-                                        disabled={isUploading}
-                                    />
+                            <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold tracking-widest text-neutral-400 uppercase flex items-center gap-2">
+                                    <FileCheck className="w-3 h-3" />
+                                    Hình nhạy cảm
                                 </label>
+                                <button
+                                    type="button"
+                                    onClick={addSensitiveImageInput}
+                                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Thêm URL
+                                </button>
+                            </div>
 
-                                {/* Ảnh đã upload */}
-                                {uploadedSensitiveImages.map((url, idx) => (
-                                    <div key={`sensitive-${idx}`} className="relative w-20 h-20 border dark:border-neutral-800 overflow-hidden group">
-                                        <img src={url} alt={`Sensitive ${idx + 1}`} className="w-full h-full object-cover" />
+                            {/* Danh sách các input URL nhạy cảm */}
+                            <div className="space-y-2 mt-2">
+                                {sensitiveUrlInputs.map((input, index) => (
+                                    <div key={input.id} className="flex items-center gap-2">
+                                        <div className="flex-1 relative">
+                                            <input
+                                                type="text"
+                                                placeholder={`URL ảnh nhạy cảm #${index + 1}`}
+                                                value={input.value}
+                                                onChange={(e) => updateSensitiveUrlInput(input.id, e.target.value)}
+                                                onBlur={() => handleUrlBlur('sensitive')}
+                                                className="w-full bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800 p-2 text-xs focus:outline-none focus:border-neutral-900 dark:focus:border-white dark:text-white"
+                                            />
+                                            {input.value.trim() && (
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+                                                    <img
+                                                        src={input.value.trim()}
+                                                        alt="Preview"
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" fill="%23f3f4f6"/><text x="16" y="18" font-size="10" text-anchor="middle" fill="%239ca3af">❌</text></svg>';
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                         <button
                                             type="button"
-                                            onClick={() => removeUploadedImage(idx, 'sensitive')}
-                                            className="absolute top-1 right-1 bg-neutral-950/80 text-white p-1 hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100"
+                                            onClick={() => removeSensitiveUrlInput(input.id)}
+                                            className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 transition-colors"
+                                            title="Xóa URL này"
                                         >
-                                            <Trash2 className="w-3 h-3" />
+                                            <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
                                 ))}
-
-                                {/* Ảnh chờ upload */}
-                                {renderPendingPreview(pendingSensitiveFiles, 'sensitive')}
                             </div>
 
-                            {pendingSensitiveFiles.length > 0 && (
-                                <p className="text-[9px] text-yellow-500 mt-1 tracking-wider">
-                                    ⏳ {pendingSensitiveFiles.length} ảnh nhạy cảm đang chờ upload khi bấm "Thêm mới"
-                                </p>
+                            {/* Hiển thị ảnh nhạy cảm đã lưu */}
+                            {sensitiveImageUrls.length > 0 && (
+                                <div className="flex items-center gap-2 flex-wrap mt-3 border-t border-neutral-100 dark:border-neutral-900 pt-3">
+                                    <span className="text-[8px] text-neutral-400 tracking-wider">🔒 Đã lưu:</span>
+                                    {sensitiveImageUrls.map((url, idx) => (
+                                        <div key={idx} className="relative w-12 h-12 border dark:border-neutral-800 overflow-hidden group">
+                                            <img src={url} alt={`Sensitive ${idx + 1}`} className="w-full h-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeSensitiveImageUrl(idx)}
+                                                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                            >
+                                                <Trash2 className="w-3 h-3 text-white" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
-                            <p className="text-[9px] text-neutral-400 mt-1 tracking-wider">
+
+                            <p className="text-[9px] text-neutral-400 mt-2 tracking-wider">
                                 🔒 Hình nhạy cảm chỉ hiển thị cho admin, không hiển thị với khách hàng.
                             </p>
+                            <p className="text-[9px] text-neutral-400 tracking-wider">
+                                💡 Nhập URL ảnh, ảnh sẽ preview ngay bên phải ô nhập
+                            </p>
                         </div>
-
-                        {/* Progress bar khi uploading */}
-                        {isUploading && (
-                            <div className="mt-3 p-3 bg-neutral-100 dark:bg-neutral-900 rounded">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="text-neutral-600 dark:text-neutral-400">
-                                        {uploadProgress.type === 'normal' ? 'Đang upload ảnh thường' : 'Đang upload ảnh nhạy cảm'}...
-                                    </span>
-                                    <span className="text-neutral-600 dark:text-neutral-400">
-                                        {uploadProgress.current}/{uploadProgress.total}
-                                    </span>
-                                </div>
-                                <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full mt-1 overflow-hidden">
-                                    <div
-                                        className="h-full bg-neutral-900 dark:bg-white transition-all duration-300 rounded-full"
-                                        style={{ width: `${uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0}%` }}
-                                    />
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Actions */}
                     <div className="sticky bottom-0 bg-white dark:bg-neutral-950 border-t border-neutral-200 dark:border-neutral-900 pt-4 flex gap-3">
                         <button
                             type="submit"
-                            disabled={isLoading || isUploading}
+                            disabled={isLoading}
                             className="flex-1 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-100 py-3 text-xs tracking-widest uppercase font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            {isUploading ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    ĐANG UPLOAD ẢNH...
-                                </>
-                            ) : isLoading ? (
+                            {isLoading ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                     ĐANG XỬ LÝ...

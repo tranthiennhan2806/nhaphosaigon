@@ -11,7 +11,7 @@ export type FengShuiIssue = 'top_hau' | 'duong_dam' | 'nga_ba' | 'nga_tu' | 'duo
 export type NeighborType = 'an_ninh' | 'yen_tinh' | 'dong_bo' | 'nao_nhiet' | 'van_minh' | 'khac';
 
 // Loại hẻm cụt/thông
-export type AlleyEndType = 'cut' | 'thong' | 'khong_xac_dinh';
+export type AlleyEndType = 'cut' | 'thong' | 'mat_tien' | 'khong_xac_dinh';
 
 // Loại hướng
 export type Direction = 'dong' | 'tay' | 'nam' | 'bac' | 'tay_bac' | 'tay_nam' | 'dong_bac' | 'dong_nam' | 'khong_xac_dinh';

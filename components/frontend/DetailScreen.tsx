@@ -4,7 +4,8 @@ import {
     ChevronLeft, Phone, MapPin, Bath, Bed, Maximize, Info,
     Building2, Ruler, Home, Navigation, Car, Users, DollarSign,
     CheckCircle, XCircle, AlertCircle, Shield, FileCheck, Eye, EyeOff,
-    X, ChevronRight, Send, User, Smartphone, Loader2
+    X, ChevronRight, Send, User, Smartphone, Loader2, Mail, Calendar,
+    Clock, BadgeCheck, UserCog
 } from 'lucide-react';
 import PropertyCard from './PropertyCard';
 import { formatPrice } from '@/utils/format';
@@ -177,7 +178,6 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
         setSendSuccess(false);
 
         try {
-            // Sử dụng WEBHOOK_URL_2 cho form tư vấn
             const webhookUrl = process.env.NEXT_PUBLIC_DISCORD_WEBHOOK_URL_2 ||
                 process.env.DISCORD_WEBHOOK_URL_2;
 
@@ -212,7 +212,6 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
             setConsultantName('');
             setConsultantPhone('');
 
-            // Tự động ẩn thông báo thành công sau 5 giây
             setTimeout(() => {
                 setSendSuccess(false);
             }, 5000);
@@ -330,36 +329,32 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
                                     {property.title}
                                 </h1>
 
-                                {isAdmin && (
-                                    <div className="flex items-center gap-1.5 text-neutral-400 text-xs uppercase tracking-wider">
-                                        <MapPin className="w-3.5 h-3.5 text-neutral-500" />
-                                        <span>{property.address}</span>
-                                    </div>
-                                )}
+                                <div className="flex items-center gap-1.5 text-neutral-400 text-xs uppercase tracking-wider">
+                                    <MapPin className="w-3.5 h-3.5 text-neutral-500" />
+                                    <span>{property.address}</span>
+                                </div>
 
-                                {isAdmin && (
-                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                        <Home className="w-3.5 h-3.5 text-neutral-400" />
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <Home className="w-3.5 h-3.5 text-neutral-400" />
+                                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                        {getHouseTypeLabel(property.houseType)}
+                                    </span>
+                                    {property.houseType === 'chung_cu' && property.projectName && (
                                         <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                            {getHouseTypeLabel(property.houseType)}
+                                            • {property.projectName}
                                         </span>
-                                        {property.houseType === 'chung_cu' && property.projectName && (
-                                            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                                • {property.projectName}
-                                            </span>
-                                        )}
-                                        {property.houseType === 'chung_cu' && property.floorNumber > 0 && (
-                                            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                                • Tầng {property.floorNumber}
-                                            </span>
-                                        )}
-                                        {property.direction && property.direction !== 'khong_xac_dinh' && (
-                                            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                                • Hướng {getDirectionLabel(property.direction)}
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
+                                    )}
+                                    {property.houseType === 'chung_cu' && property.floorNumber > 0 && (
+                                        <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                            • Tầng {property.floorNumber}
+                                        </span>
+                                    )}
+                                    {property.direction && property.direction !== 'khong_xac_dinh' && (
+                                        <span className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                            • Hướng {getDirectionLabel(property.direction)}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-3 gap-4 border-t border-b border-neutral-100 dark:border-neutral-900 py-4 text-center">
@@ -767,6 +762,113 @@ export function DetailScreen({ property, navigateTo, properties }: DetailScreenP
                                 </p>
                             </form>
                         </div>
+
+                        {/* 🛠️ THÔNG TIN QUẢN LÝ - CHỈ ADMIN */}
+                        {isAdmin && (
+                            <div className="border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-6 space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <UserCog className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                                    <h4 className="text-[10px] font-bold tracking-widest uppercase text-amber-700 dark:text-amber-400">
+                                        🛠️ THÔNG TIN QUẢN LÝ (ADMIN)
+                                    </h4>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {/* Thông tin liên hệ chính */}
+                                    <div className="border-b border-amber-200/50 dark:border-amber-800/50 pb-3">
+                                        <h5 className="text-[9px] font-bold tracking-widest text-amber-600/70 dark:text-amber-400/70 uppercase mb-2">
+                                            📞 LIÊN HỆ CHÍNH
+                                        </h5>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-xs">
+                                                <User className="w-3.5 h-3.5 text-amber-500" />
+                                                <span className="font-semibold dark:text-white">{property.contactName || 'Chưa có'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs">
+                                                <Phone className="w-3.5 h-3.5 text-amber-500" />
+                                                <span className="font-mono dark:text-white">{property.contactPhone || 'Chưa có'}</span>
+                                                {property.contactPhone && (
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(property.contactPhone || "");
+                                                            alert(`Đã sao chép SĐT: ${property.contactPhone}`);
+                                                        }}
+                                                        className="text-[8px] text-amber-600 dark:text-amber-400 hover:underline"
+                                                    >
+                                                        [Copy]
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {property.contactPhone && (
+                                                <a
+                                                    href={`tel:${property.contactPhone}`}
+                                                    className="inline-flex items-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-400 hover:underline"
+                                                >
+                                                    <Phone className="w-3 h-3" />
+                                                    Gọi ngay
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Thông tin bổ sung */}
+                                    <div className="space-y-2">
+                                        <h5 className="text-[9px] font-bold tracking-widest text-amber-600/70 dark:text-amber-400/70 uppercase mb-2">
+                                            📋 THÔNG TIN BỔ SUNG
+                                        </h5>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <BadgeCheck className="w-3 h-3 text-amber-500" />
+                                                <span className="text-[10px] dark:text-white">
+                                                    {property.saleStatus === 'da_ban' ? '🔴 Đã bán' : '🟢 Đang bán'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <Calendar className="w-3 h-3 text-amber-500" />
+                                                <span className="text-[10px] dark:text-white font-mono">
+                                                    ID: {property.id.slice(-8)}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 col-span-2">
+                                                <Clock className="w-3 h-3 text-amber-500" />
+                                                <span className="text-[10px] dark:text-white">
+                                                    Cập nhật: {new Date().toLocaleDateString('vi-VN')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Action buttons */}
+                                    <div className="flex gap-2 pt-2 border-t border-amber-200/50 dark:border-amber-800/50">
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(JSON.stringify({
+                                                    id: property.id,
+                                                    title: property.title,
+                                                    contactName: property.contactName,
+                                                    contactPhone: property.contactPhone,
+                                                    price: property.price,
+                                                    address: property.address
+                                                }, null, 2));
+                                                alert('Đã sao chép thông tin quản lý!');
+                                            }}
+                                            className="flex-1 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 py-1.5 text-[8px] tracking-widest uppercase transition-colors text-amber-700 dark:text-amber-400"
+                                        >
+                                            📋 Copy Info
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                window.open(`mailto:admin@domain.com?subject=Quản lý BĐS: ${property.id}&body=Thông tin BĐS:\n- ID: ${property.id}\n- Tiêu đề: ${property.title}\n- Liên hệ: ${property.contactName} - ${property.contactPhone}`, '_blank');
+                                            }}
+                                            className="flex-1 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 py-1.5 text-[8px] tracking-widest uppercase transition-colors text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1"
+                                        >
+                                            <Mail className="w-3 h-3" />
+                                            Email
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
